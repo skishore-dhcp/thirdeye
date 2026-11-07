@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ThirdEye{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="titlebar">
+    <a class="brand" href="{{ url_for('dashboard') if user else url_for('login') }}">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="36" height="36">
+      <span>ThirdEye</span>
+    </a>
+    {% if user %}
+    <div class="userbox">
+      <span class="username">{{ user.username }}</span>
+      <span class="role role-{{ user.role|lower }}">{{ user.role }}</span>
+      <a class="btn btn-small btn-on-dark" href="{{ url_for('logout') }}">Log Out</a>
+    </div>
+    {% endif %}
+  </header>
+  <main>{% block main %}{% endblock %}</main>
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</body>
+</html>

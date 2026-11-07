@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes, when, status_label, issue_list with context %}
+{% block title %}Approval Requests - ThirdEye{% endblock %}
+{% block body_class %}page-inner{% endblock %}
+{% block main %}
+<div class="inner">
+  <a class="btn btn-small btn-on-dark back" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+  <section class="card wide-card">
+    <h1>Approval Requests</h1>
+    {{ flashes(messages) }}
+
+    <h2>Pending Requests</h2>
+    {% if pending %}
+      {% for p in pending %}
+      <article class="request">
+        <div class="request-head">
+          <span><strong>{{ p.username }}</strong> &middot; {{ when(p.created_at) }} &middot; {{ p.content_type }}</span>
+          {{ status_label(p.status) }}
+        </div>
+        {% if p.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed.</strong> The corrected text still contains items (such as [removed]) that must be edited by hand.</div>{% endif %}
+        {{ issue_list(p.issues) }}
+        {% if p.can_decide %}
+        <div class="actions">
+          <form method="post" action="{{ url_for('approve_request', sub_id=p.id) }}">{{ csrf() }}<button class="btn" type="submit">Approve</button></form>
+          <form method="post" action="{{ url_for('reject_request', sub_id=p.id) }}">{{ csrf() }}<button class="btn" type="submit">Reject</button></form>
+        </div>
+        {% endif %}
+      </article>
+      {% endfor %}
+    {% else %}
+      <p class="muted">{{ 'No pending requests' if view == 'authorized' else "You have no pending requests" }}</p>
+    {% endif %}
+
+    <h2>History</h2>
+    {% if history %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          {% if view == 'authorized' %}<th>Username</th>{% endif %}
+          <th>Date and Time</th><th>Content Type</th><th>Issues Found</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+          {% for h in history %}
+          <tr>
+            {% if view == 'authorized' %}<td>{{ h.username }}</td>{% endif %}
+            <td>{{ when(h.resolved_at) }}</td><td>{{ h.content_type }}</td><td>{{ h.issue_count }}</td>
+            <td>{{ status_label(h.status) }}{% if h.download_url %} <a class="btn btn-small" href="{{ h.download_url }}">Download</a>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted small">The last 15 approved or rejected requests are kept.</p>
+    {% else %}
+    <p class="muted">{{ 'No history yet' if view == 'authorized' else "You haven't submitted any requests yet" }}</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

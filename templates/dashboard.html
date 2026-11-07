@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flashes with context %}
+{% block title %}Dashboard - ThirdEye{% endblock %}
+{% block body_class %}page-dashboard{% endblock %}
+{% block main %}
+<section class="banner">
+  <div class="banner-inner">
+    <h1>Keep your brand identity consistent and attractive with ThirdEye</h1>
+    <a class="btn btn-on-dark" href="#guide" data-scroll>Start Now</a>
+  </div>
+</section>
+
+<section id="guide" class="guide">
+  <h2>A Guide to using ThirdEye</h2>
+  <div class="guide-row">
+    <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}">
+      <span class="guide-art" aria-hidden="true">01</span>
+      <span class="guide-title">Add Guidelines</span>
+      <span class="guide-text">Define the rules your content should follow: tone, phrasing, color theme, and more.</span>
+      <span class="guide-cta">Open</span>
+    </a>
+    <a class="guide-item" data-num="2" href="{{ url_for('check') }}">
+      <span class="guide-art" aria-hidden="true">02</span>
+      <span class="guide-title">Check Content</span>
+      <span class="guide-text">Upload the content to be checked, as plain text, a PDF or an image.</span>
+      <span class="guide-cta">Open</span>
+    </a>
+    <a class="guide-item" data-num="3" href="{{ url_for('requests_page') }}">
+      <span class="guide-art" aria-hidden="true">03</span>
+      <span class="guide-title">Approval Requests</span>
+      <span class="guide-text">Review pending approval requests and see the request history.</span>
+      <span class="guide-cta">Open</span>
+    </a>
+  </div>
+</section>
+
+<section class="insights-wrap">
+  <div class="card wide-card">
+    <h2>Insights on Repeated Issues</h2>
+    <p class="muted">Issues that keep appearing in your content, with tips to avoid them.</p>
+    {{ flashes(messages) }}
+    {% if insights %}
+    <ul class="insights">
+      {% for item in insights %}
+      <li class="insight">
+        <div class="insight-head">
+          <span class="insight-name">{{ item.issue }}</span>
+          <span class="tag">Flagged {{ item.occurrences }} times</span>
+        </div>
+        <ul class="tips">{% for tip in item.tips %}<li>{{ tip }}</li>{% endfor %}</ul>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="note">No repeated issues yet. Insights appear once the same issue has been approved three times.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

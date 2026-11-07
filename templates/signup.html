@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes with context %}
+{% block title %}Create account - ThirdEye{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block main %}
+<section class="card auth-card">
+  <h1>Create New Account</h1>
+  {{ flashes(messages) }}
+  <form method="post" action="{{ url_for('signup') }}">
+    {{ csrf() }}
+    <label class="sr-only" for="username">Username</label>
+    <input id="username" class="input" type="text" name="username" placeholder="Username" autocomplete="username" minlength="3" maxlength="30" required autofocus>
+    <label class="sr-only" for="password">Password</label>
+    <input id="password" class="input" type="password" name="password" placeholder="Password (6 or more characters)" autocomplete="new-password" minlength="6" required>
+    <p class="muted">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+    <button class="btn" type="submit">Create Account</button>
+  </form>
+</section>
+{% endblock %}

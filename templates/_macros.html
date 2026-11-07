@@ -1,0 +1,22 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+
+{% macro flashes(messages) %}
+  {% for m in messages %}<div class="note {{ m.category }}" role="status">{{ m.text }}</div>{% endfor %}
+{% endmacro %}
+
+{% macro when(iso) %}{% if iso %}<time class="local-time" datetime="{{ iso }}">{{ iso[:16]|replace('T', ' ') }} UTC</time>{% else %}-{% endif %}{% endmacro %}
+
+{% macro status_label(status) %}<span class="status status-{{ status|lower }}">{{ status }}</span>{% endmacro %}
+
+{% macro issue_list(issues) %}
+  <ul class="issues">
+    {% for i in issues %}
+    <li class="issue">
+      <span class="tag">{{ i.label }}</span>{% if i.manual %} <span class="tag">Manual editing needed</span>{% endif %}
+      <p class="problem">{{ i.problem }}</p>
+      {% if i.excerpt %}<p class="excerpt">&ldquo;{{ i.excerpt }}&rdquo;</p>{% endif %}
+      <p class="fix"><strong>Suggested fix:</strong> {{ i.suggestion }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+{% endmacro %}

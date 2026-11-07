@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes, issue_list with context %}
+{% block title %}Check Content - ThirdEye{% endblock %}
+{% block body_class %}page-inner{% endblock %}
+{% block main %}
+<div class="inner">
+  <a class="btn btn-small btn-on-dark back" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+  <section class="card wide-card">
+    <h1>Check Content</h1>
+    {{ flashes(messages) }}
+    {% if error %}<div class="note error" role="alert">{{ error }}</div>{% endif %}
+    {% if forwarded %}<div class="note success">{{ forwarded.message }}</div>{% endif %}
+    {% if rejected %}<div class="note">{{ rejected.message }}</div>{% endif %}
+
+    {% if approved %}
+    <div class="results">
+      <div class="status-ok">{{ approved.message }}</div>
+      {% if approved.manual_edit %}<div class="note error" role="alert">Manual editing is still needed. Replace every <strong>[removed]</strong> and fix the items marked &ldquo;Manual editing needed&rdquo; in the report before using this text.</div>{% endif %}
+      <label class="field-label" for="corrected">Corrected text</label>
+      <textarea id="corrected" class="input textarea" rows="8" readonly>{{ approved.corrected_text }}</textarea>
+      <div class="actions">
+        <button class="btn" type="button" data-copy="#corrected">Copy</button>
+        <a class="btn" href="{{ approved.download_url }}">Download</a>
+      </div>
+      {% if approved.input_type == 'pdf' %}<p class="muted small">The download is a zip with a corrected copy of your PDF, the corrected text, and a short report. If required words are missing, the last page of the PDF lists them: add them where suitable, then delete that page. Your original file is untouched.</p>{% endif %}
+      {% if approved.input_type == 'image' %}<p class="muted small">The download is a zip with the corrected text and a short report. Your original image is untouched.</p>{% endif %}
+    </div>
+    {% endif %}
+
+    <form id="check-form" method="post" action="{{ url_for('check') }}" enctype="multipart/form-data">
+      {{ csrf() }}
+      <input type="hidden" name="input_type" id="input_type" value="text">
+      <div class="toggle" role="tablist">
+        <button type="button" class="toggle-btn active" data-mode="text">Type or Paste Text</button>
+        <button type="button" class="toggle-btn" data-mode="pdf">Upload PDF</button>
+        <button type="button" class="toggle-btn" data-mode="image">Upload Image</button>
+      </div>
+
+      <div class="panel" data-panel="text">
+        <label class="sr-only" for="text">Text to check</label>
+        <textarea id="text" class="input textarea" name="text" rows="9" maxlength="{{ max_text_chars }}" placeholder="Type or paste your text here">{{ text or '' }}</textarea>
+        <div class="counter"><span id="counter">{{ (text or '')|length }}</span> / {{ "{:,}".format(max_text_chars) }}</div>
+      </div>
+      <div class="panel" data-panel="pdf" hidden>
+        <label class="sr-only" for="pdf">PDF file</label>
+        <input id="pdf" class="input" type="file" name="pdf" accept="application/pdf,.pdf" disabled>
+        <p class="muted small">PDF only, up to {{ max_pdf_mb }} MB.</p>
+      </div>
+      <div class="panel" data-panel="image" hidden>
+        <label class="sr-only" for="image">Image file</label>
+        <input id="image" class="input" type="file" name="image" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" disabled>
+        <p class="muted small">PNG, JPG or WebP, up to {{ max_image_mb }} MB. The text is read with OCR, so clear, high-resolution images work best.</p>
+      </div>
+
+      <div class="note">Logo and color checks apply to PDFs and images. Plain text is checked for wording and tone.</div>
+      <div class="actions"><button class="btn" type="submit" id="check-btn">Check Content</button></div>
+    </form>
+
+    {% if result %}
+    <div class="results">
+      {% if result.status == 'clean' and not result.needs_review %}
+        <div class="status-ok">No issues found. Your content matches your guidelines.</div>
+      {% elif result.status == 'clean' %}
+        <div class="note error" role="alert">Not fully checked. No problems were found by the checks that ran, but some checks could not be completed or may be unreliable. See the notes below and review manually.</div>
+      {% else %}
+        <h2>Issues found ({{ result.issues|length }})</h2>
+        {% if result.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed.</strong> Some items below cannot be fixed automatically (for example a banned word with no replacement is replaced by [removed]). The corrected text will need your edits.</div>{% endif %}
+        {{ issue_list(result.issues) }}
+        {% if not user.is_authorized %}<div class="note">Your request will be sent to an Authorized user for approval.</div>{% endif %}
+        <div class="actions">
+          <form method="post" action="{{ url_for('approve_check', sub_id=result.submission_id) }}">{{ csrf() }}<button class="btn" type="submit">Approve</button></form>
+          <form method="post" action="{{ url_for('reject_check', sub_id=result.submission_id) }}">{{ csrf() }}<button class="btn" type="submit">Reject</button></form>
+        </div>
+      {% endif %}
+      {% for n in result.notes %}<div class="note">{{ n }}</div>{% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
