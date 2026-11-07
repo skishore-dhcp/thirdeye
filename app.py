@@ -93,7 +93,11 @@ def register(app):
     def page(template, status=200, **ctx):
         ctx["user"] = user_dict(g.user)
         ctx["csrf_token"] = session.get("csrf")
-        ctx["messages"] = [{"category": c, "text": t} for c, t in get_flashed_messages(with_categories=True)]
+        seen = []
+        for c, t in get_flashed_messages(with_categories=True):
+            if {"category": c, "text": t} not in seen:
+                seen.append({"category": c, "text": t})
+        ctx["messages"] = seen[-3:]
         if wants_json():
             return jsonify(ctx), status
         try:
