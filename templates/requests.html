@@ -17,7 +17,8 @@
           <span><strong>{{ p.username }}</strong> &middot; {{ when(p.created_at) }} &middot; {{ p.content_type }}</span>
           {{ status_label(p.status) }}
         </div>
-        {% if p.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed.</strong> The corrected text still contains items (such as [removed]) that must be edited by hand.</div>{% endif %}
+        {# changed #}
+        {% if p.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed</strong> for: {{ p.issues|selectattr('manual')|map(attribute='label')|join('; ') }}. These cannot be fixed automatically and must be edited by hand.</div>{% endif %}
         {{ issue_list(p.issues) }}
         {% if p.can_decide %}
         <div class="actions">
