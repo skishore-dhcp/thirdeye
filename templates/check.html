@@ -15,7 +15,8 @@
     {% if approved %}
     <div class="results">
       <div class="status-ok">{{ approved.message }}</div>
-      {% if approved.manual_edit %}<div class="note error" role="alert">Manual editing is still needed. Replace every <strong>[removed]</strong> and fix the items marked &ldquo;Manual editing needed&rdquo; in the report before using this text.</div>{% endif %}
+      {# changed #}
+      {% if approved.manual_edit %}<div class="note error" role="alert">Manual editing is still needed before you use this text. {% if '[removed]' in approved.corrected_text %}Replace every <strong>[removed]</strong> with your own wording, and {% endif %}Fix the items marked &ldquo;Manual editing needed&rdquo; in the report.</div>{% endif %}
       <label class="field-label" for="corrected">Corrected text</label>
       <textarea id="corrected" class="input textarea" rows="8" readonly>{{ approved.corrected_text }}</textarea>
       <div class="actions">
@@ -64,7 +65,8 @@
         <div class="note error" role="alert">Not fully checked. No problems were found by the checks that ran, but some checks could not be completed or may be unreliable. See the notes below and review manually.</div>
       {% else %}
         <h2>Issues found ({{ result.issues|length }})</h2>
-        {% if result.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed.</strong> Some items below cannot be fixed automatically (for example a banned word with no replacement is replaced by [removed]). The corrected text will need your edits.</div>{% endif %}
+        {# changed #}
+        {% if result.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed</strong> for: {{ result.issues|selectattr('manual')|map(attribute='label')|join('; ') }}. These cannot be fixed automatically. The items tagged &ldquo;Manual editing needed&rdquo; below say what to do.</div>{% endif %}
         {{ issue_list(result.issues) }}
         {% if not user.is_authorized %}<div class="note">Your request will be sent to an Authorized user for approval.</div>{% endif %}
         <div class="actions">
