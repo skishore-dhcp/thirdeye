@@ -18,7 +18,7 @@ KIND_LABELS = {
 
 
 class ContentError(Exception):
-
+    pass
 
 def open_pdf(data, max_pages):
     if b"%PDF-" not in data[:1024]:
