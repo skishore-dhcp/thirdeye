@@ -19,7 +19,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
     SQLALCHEMY_DATABASE_URI = _database_url()
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-    GEMINI_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL") or "gemini-3.1-flash-lite"
     GEMINI_THINKING_BUDGET = 0
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
