@@ -27,10 +27,10 @@
     {% endif %}
 
     {% if default_rules %}
-    <h3>{{ 'Sample rules' if demo_mode else 'Default rules' }} <span class="muted small">(built in, read only)</span></h3>
+    <h3>Default rules <span class="muted small">(built in, read only)</span></h3>
     <ul class="rule-list">
       {% for r in default_rules %}
-      <li class="rule rule-default"><span class="tag">{{ r.kind_label }}</span><span class="rule-text">{{ r.text }}{% if r.effective_replacement %} <span class="rule-replacement">&rarr; {{ r.effective_replacement }}</span>{% endif %}</span><span class="muted small">{{ 'Sample' if demo_mode else 'Default' }}</span></li>
+      <li class="rule rule-default"><span class="tag">{{ r.kind_label }}</span><span class="rule-text">{{ r.text }}{% if r.effective_replacement %} <span class="rule-replacement">&rarr; {{ r.effective_replacement }}</span>{% endif %}</span><span class="muted small">Default</span></li>
       {% endfor %}
     </ul>
     {% endif %}
