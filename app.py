@@ -19,7 +19,7 @@ import checks
 import insights
 import llm
 from config import Config
-from models import (BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Submission, User, db, iso, utcnow)
+from models import (BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Setting, Submission, User, db, iso, utcnow)
 
 HEX_RE = re.compile(r"^#?[0-9a-fA-F]{6}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
@@ -46,7 +46,6 @@ def create_app(overrides=None):
 
 
 def demo_account_specs(cfg):
-    """The two demo accounts a visitor can use in demo mode."""
     return [
         {"key": "reviewer", "label": "Try as Reviewer", "role": "Authorized", "username": cfg["DEMO_USERNAME"],
          "password": cfg["DEMO_PASSWORD"], "about": "Can approve requests and edit the guidelines."},
@@ -55,15 +54,24 @@ def demo_account_specs(cfg):
     ]
 
 
+def seed_sample_rules(cfg):
+    existing = {(r.kind, r.text.lower()) for r in Guideline.query.all()}
+    for entry in cfg["SAMPLE_RULES"]:
+        kind, text = entry[0], entry[1]
+        replacement = entry[2] if len(entry) > 2 else None
+        if (kind, text.lower()) not in existing:
+            db.session.add(Guideline(kind=kind, text=text, replacement=replacement, created_by="demo"))
+
+
 def init_db(app):
     db.create_all()
-    cols = inspect(db.engine)       
+    cols = inspect(db.engine)
     for table in ("guidelines", "default_rules"):
         if "replacement" not in {c["name"] for c in cols.get_columns(table)}:
             db.session.execute(sql_text(f"ALTER TABLE {table} ADD COLUMN replacement VARCHAR(200)"))
     db.session.commit()
     wanted = {(entry[0], entry[1]) for entry in app.config["DEFAULT_RULES"]}
-    for row in DefaultRule.query.all():          
+    for row in DefaultRule.query.all():
         if (row.kind, row.text) not in wanted:
             db.session.delete(row)
     for entry in app.config["DEFAULT_RULES"]:
@@ -79,7 +87,7 @@ def init_db(app):
         db.session.flush()
     demo = app.config["DEMO_MODE"]
     brand = db.session.get(BrandSettings, 1)
-    if demo and not brand.colors:                     
+    if demo and not brand.colors:
         brand.colors_json = json.dumps(sorted(app.config["SAMPLE_BRAND_COLORS"]))
         brand.tolerance = app.config["SAMPLE_BRAND_TOLERANCE"]
     for spec in demo_account_specs(app.config):
@@ -88,12 +96,15 @@ def init_db(app):
             if user is None:
                 db.session.add(User(username=spec["username"], role=spec["role"],
                                     password_hash=generate_password_hash(spec["password"])))
-            else:                                      
+            else:
                 user.role = spec["role"]
                 if not check_password_hash(user.password_hash, spec["password"]):
                     user.password_hash = generate_password_hash(spec["password"])
         elif user is not None and check_password_hash(user.password_hash, spec["password"]):
-            user.password_hash = generate_password_hash(secrets.token_hex(32))    
+            user.password_hash = generate_password_hash(secrets.token_hex(32))
+    if demo and db.session.get(Setting, "sample_rules_seeded") is None:
+        seed_sample_rules(app.config)
+        db.session.add(Setting(key="sample_rules_seeded", value="1"))
     insights.merge_duplicates()
     db.session.commit()
 
@@ -167,7 +178,6 @@ def register(app):
         return wrapper
 
     def guidelines_editor(fn):
-        """Only Authorized users may change rules or brand settings (Members can view them)."""
         @wraps(fn)
         @login_required
         def wrapper(*a, **kw):
@@ -206,7 +216,7 @@ def register(app):
     def index():
         return redirect(url_for("dashboard" if g.user else "login"))
 
-    failed_logins = {}      
+    failed_logins = {}
 
     def login_lock_seconds(name):
         if cfg["DEMO_MODE"] and name in {s["username"].lower() for s in demo_account_specs(cfg)}:
@@ -240,7 +250,7 @@ def register(app):
         user = User.query.filter(func.lower(User.username) == key).first() if name else None
         if not user or not check_password_hash(user.password_hash, password):
             if name:
-                if len(failed_logins) > 1000:                       
+                if len(failed_logins) > 1000:
                     failed_logins.clear()
                 failed_logins.setdefault(key, []).append(time.time())
             return fail("Incorrect username or password. Please try again.", 401, "login")
@@ -284,11 +294,12 @@ def register(app):
     @app.route("/demo/reset", methods=["POST"])
     @authorized_required
     def demo_reset():
-        """Demo mode only: wipe requests, insights and added rules, and restore the sample palette."""
         if not cfg["DEMO_MODE"]:
             return fail("Demo mode is not on.", 404, "dashboard")
         for model in (Submission, Guideline, IssueCounter, Insight):
             model.query.delete()
+        db.session.flush()
+        seed_sample_rules(cfg)
         brand = db.session.get(BrandSettings, 1)
         brand.colors_json = json.dumps(sorted(cfg["SAMPLE_BRAND_COLORS"]))
         brand.tolerance = cfg["SAMPLE_BRAND_TOLERANCE"]
@@ -517,8 +528,8 @@ def register(app):
         sub, err = own_draft(sub_id)
         if err:
             return err
-        sub.output_blob, sub.corrected_text = None, None      
-        resolve(sub, "Rejected")                               
+        sub.output_blob, sub.corrected_text = None, None
+        resolve(sub, "Rejected")
         return page("check.html", **check_ctx(), rejected={"message": "No changes were made. Saved to history as Rejected."})
 
     def sub_dict(s):
