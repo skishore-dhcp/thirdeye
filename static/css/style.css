@@ -1,35 +1,35 @@
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 
 :root {
-  --tcl01-bg: #e6d3c0;
-  --tcl01-glow: #faf5e8;
-  --tcl01-clay: #b4c8a4;
-  --tcl01-shade: #718a66;
-  --tcl01-light: #fffcf2e6;
-  --tcl01-ink: #25321f;
-  --tcl01-mut: #566249;
-  --tcl01-soft: #f4ede0;
-  --tcl01-well: #f5efe3;
-  --tcl01-link: #2f5430;
-  --tcl01-ok: #8fbf86;
-  --tcl01-bad: #d9856f;
+  --tcl01-bg: #fae7d9;
+  --tcl01-glow: #fff4dd;
+  --tcl01-clay: #ffad9a;
+  --tcl01-shade: #cf705f;
+  --tcl01-light: #fffbe5e6;
+  --tcl01-ink: #402218;
+  --tcl01-mut: #735245;
+  --tcl01-soft: #fbede3;
+  --tcl01-well: #fcf1e9;
+  --tcl01-link: #9c3f30;
+  --tcl01-ok: #a9cf9e;
+  --tcl01-bad: #ec8a76;
   --font-tcl01-display: "Bricolage Grotesque", system-ui, sans-serif;
   --font-tcl01-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-tcl01-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 @supports (color: oklch(0.5 0.1 30)) {
   :root {
-    --tcl01-bg: oklch(0.875 0.038 65);
-    --tcl01-glow: oklch(0.970 0.018 89);
-    --tcl01-clay: oklch(0.808 0.054 131);
-    --tcl01-light: oklch(0.99 0.02 95 / 0.9);
-    --tcl01-ink: oklch(0.299 0.038 136);
-    --tcl01-mut: oklch(0.478 0.042 129);
+    --tcl01-bg: oklch(0.94 0.028 60);
+    --tcl01-glow: oklch(0.975 0.035 75);
+    --tcl01-clay: oklch(0.83 0.11 32);
+    --tcl01-light: oklch(0.99 0.03 85 / 0.9);
+    --tcl01-ink: oklch(0.29 0.05 40);
+    --tcl01-mut: oklch(0.47 0.05 42);
   }
 }
 @supports (color: color-mix(in oklch, red 50%, blue)) {
   :root {
-    --tcl01-shade: color-mix(in oklch, var(--tcl01-clay) 52%, oklch(0.36 0.07 145));
+    --tcl01-shade: color-mix(in oklch, var(--tcl01-clay) 55%, oklch(0.42 0.12 30));
     --tcl01-soft: color-mix(in oklch, var(--tcl01-bg) 88%, white);
     --tcl01-well: color-mix(in oklch, var(--tcl01-bg) 80%, white);
   }
@@ -97,7 +97,7 @@ a { color: var(--tcl01-link); font-weight: 700; }
 .input::placeholder { color: var(--tcl01-mut); opacity: .65; }
 .input:focus { box-shadow: var(--shadow-inset), 0 0 0 3px var(--tcl01-shade); }
 .textarea { resize: vertical; min-height: 200px; line-height: 1.6; border-radius: 28px; }
-select.input { appearance: none; padding-right: 48px; background: var(--tcl01-well) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' fill='none' stroke='%23566249' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M1 1l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 20px center; }
+select.input { appearance: none; padding-right: 48px; background: var(--tcl01-well) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' fill='none' stroke='%23735245' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M1 1l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 20px center; }
 
 .btn {
   display: inline-block; padding: 13px 32px; font: inherit; font-weight: 700; letter-spacing: .02em; color: var(--tcl01-ink); background: var(--tcl01-clay);
@@ -114,8 +114,8 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
   margin: 16px 0; padding: 14px 20px; border-radius: 24px; background: var(--tcl01-soft); color: var(--tcl01-ink); font-size: .98rem;
   box-shadow: var(--shadow-chip); border-left: 9px solid var(--tcl01-clay);
 }
-.note.error { background: #fbe4dc; border-left-color: var(--tcl01-bad); }
-.note.success { background: #e6f2de; border-left-color: var(--tcl01-ok); }
+.note.error { background: #ffe6df; border-left-color: var(--tcl01-bad); }
+.note.success { background: #eefae8; border-left-color: var(--tcl01-ok); }
 .tag { display: inline-block; padding: 4px 14px; font-family: var(--font-tcl01-mono); font-size: .74rem; font-weight: 600; letter-spacing: .04em; border-radius: 999px; background: var(--tcl01-soft); color: var(--tcl01-mut); box-shadow: var(--shadow-chip); }
 .field-label { display: block; margin-top: 18px; font-weight: 700; }
 .actions { display: flex; gap: 14px; flex-wrap: wrap; margin: 24px 0 6px; }
@@ -155,7 +155,6 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 }
 .guide-item::before { top: 30px; left: 34px; }
 .guide-item::after { bottom: 30px; right: 34px; transform: rotate(180deg); }
-.guide-item:nth-child(3n+2)::before, .guide-item:nth-child(3n+2)::after, .guide-item:nth-child(3n+2) .guide-text { color: var(--tcl01-ink); }
 .guide-item:hover, .guide-item:focus-visible { transform: translateY(-14px); }
 .guide-art { font-family: var(--font-tcl01-display); font-size: clamp(5.5rem, 9vw, 8rem); font-weight: 800; line-height: 1; color: var(--tcl01-mut); opacity: .22; margin-bottom: 6px; }
 .guide-title { font-family: var(--font-tcl01-display); font-size: clamp(1.9rem, 2.6vw, 2.4rem); font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
@@ -199,7 +198,7 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 .panel[hidden] { display: none; }
 .counter { text-align: right; font-family: var(--font-tcl01-mono); font-size: .82rem; color: var(--tcl01-mut); }
 .results { margin-top: 34px; padding-top: 10px; }
-.status-ok { padding: 16px 22px; border-radius: 26px; background: #e6f2de; font-weight: 700; box-shadow: var(--shadow-chip); border-left: 9px solid var(--tcl01-ok); }
+.status-ok { padding: 16px 22px; border-radius: 26px; background: #eefae8; font-weight: 700; box-shadow: var(--shadow-chip); border-left: 9px solid var(--tcl01-ok); }
 .issue { padding: 16px 0; border-top: 3px dotted var(--tcl01-soft); }
 .issue:first-child { border-top: 0; }
 .issue p { margin: 6px 0; }
@@ -213,8 +212,8 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 .table th { font-family: var(--font-tcl01-mono); font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--tcl01-mut); }
 .table th, .table td { padding: 14px; text-align: left; border-bottom: 3px dotted var(--tcl01-soft); white-space: nowrap; }
 .status { display: inline-block; padding: 4px 14px; border-radius: 999px; font-family: var(--font-tcl01-mono); font-size: .76rem; font-weight: 600; box-shadow: var(--shadow-chip); }
-.status-approved { color: #2f5a35; background: #dcefd3; }
-.status-rejected { color: #8a2f22; background: #f8d9cf; }
+.status-approved { color: #2f5a35; background: #e3f4dc; }
+.status-rejected { color: #8a2f22; background: #ffdcd3; }
 .status-pending { color: var(--tcl01-mut); background: var(--tcl01-soft); }
 
 @media (max-width: 700px) {
