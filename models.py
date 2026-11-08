@@ -19,7 +19,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(40), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default="Member")  
+    role = db.Column(db.String(20), nullable=False, default="Member")
     created_at = db.Column(db.DateTime, default=utcnow)
 
     @property
@@ -32,9 +32,15 @@ class Guideline(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     kind = db.Column(db.String(20), nullable=False)
     text = db.Column(db.String(200), nullable=False)
-    replacement = db.Column(db.String(200))      
+    replacement = db.Column(db.String(200))
     created_by = db.Column(db.String(40))
     created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class Setting(db.Model):
+    __tablename__ = "settings"
+    key = db.Column(db.String(80), primary_key=True)
+    value = db.Column(db.String(255), nullable=False, default="")
 
 
 class DefaultRule(db.Model):
@@ -64,7 +70,7 @@ class Submission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     username = db.Column(db.String(40), nullable=False)
-    input_type = db.Column(db.String(10), nullable=False)       
+    input_type = db.Column(db.String(10), nullable=False)
     status = db.Column(db.String(10), nullable=False, default="Draft")
     issues_json = db.Column(db.Text, default="[]")
     corrected_text = db.Column(db.Text)
