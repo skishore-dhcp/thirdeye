@@ -52,12 +52,10 @@ class Config:
     DRAFT_TTL_MINUTES = 60
     MIN_PASSWORD_LENGTH = 6
 
-
     VISUAL_MAX_PAGES = 5
     LOGO_MATCH_THRESHOLD = 0.65
     COLOR_TOLERANCES = {"Strict": 30, "Normal": 60, "Loose": 90}
     COLOR_MIN_SHARE = 0.05
-
 
     DEMO_MODE = os.environ.get("DEMO_MODE", "1").strip().lower() not in ("0", "false", "no", "off")
     DEMO_USERNAME = os.environ.get("DEMO_USERNAME") or "demo123"
@@ -84,5 +82,5 @@ class Config:
     ]
     if GEMINI_API_KEY:
         SAMPLE_RULES.append(("tone", "Friendly and professional, no slang"))
-    DEFAULT_RULES = SAMPLE_RULES if DEMO_MODE else []
+    DEFAULT_RULES = []
     DEFAULT_REPLACEMENT = "[removed]"
