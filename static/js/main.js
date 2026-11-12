@@ -1,3 +1,10 @@
+// Remember the viewer's time zone so downloaded PDFs show local times
+try {
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+  if (/^[A-Za-z0-9_+\-\/]+$/.test(zone)) document.cookie = "tz=" + zone + "; path=/; max-age=31536000; SameSite=Lax";
+  document.cookie = "tzo=" + new Date().getTimezoneOffset() + "; path=/; max-age=31536000; SameSite=Lax";
+} catch (e) { /* PDFs fall back to UTC */ }
+
 document.addEventListener("DOMContentLoaded", () => {
   // Start Now: smooth scroll to the guide
   document.querySelectorAll("[data-scroll]").forEach((a) =>
@@ -130,6 +137,8 @@ document.addEventListener("DOMContentLoaded", () => {
       timer = setInterval(() => { if (!paused && !document.querySelector(".tour-card")) go(current + 1); }, wait);
     };
     dots.forEach((d, i) => d.addEventListener("click", () => { go(i); restart(); }));
+    banner.querySelectorAll(".banner-arrow").forEach((a) =>
+      a.addEventListener("click", () => { go(current + Number(a.dataset.step)); restart(); }));
     banner.addEventListener("mouseenter", () => { paused = true; });
     banner.addEventListener("mouseleave", () => { paused = false; });
     banner.addEventListener("focusin", () => { paused = true; });
@@ -192,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const config = document.getElementById("tour-config");
   if (!config) return;
   const meta = document.querySelector('meta[name="csrf-token"]');
-  let steps = [], index = 0, hole, card, blocker, frame = 0, active = false;
+  let steps = [], index = 0, hole, card, blocker, frame = 0, active = false, cramped = false;
 
   const collect = () =>
     Array.from(document.querySelectorAll("[data-tour-title]"))
@@ -213,10 +222,14 @@ document.addEventListener("DOMContentLoaded", () => {
     hole.style.height = r.height + pad * 2 + "px";
     hole.style.borderRadius = getComputedStyle(el).borderRadius === "0px" ? "28px" : getComputedStyle(el).borderRadius;
     const cw = card.offsetWidth, ch = card.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    const gap = pad + 14, beside = Math.max(12, Math.min(r.top, vh - ch - 12));
     let top, left = Math.max(12, Math.min(r.left, vw - cw - 12));
-    if (r.bottom + pad + 14 + ch <= vh) top = r.bottom + pad + 14;
-    else if (r.top - pad - 14 - ch >= 0) top = r.top - pad - 14 - ch;
+    if (r.bottom + gap + ch <= vh) top = r.bottom + gap;
+    else if (r.top - gap - ch >= 0) top = r.top - gap - ch;
+    else if (r.right + gap + cw <= vw) { top = beside; left = r.right + gap; }
+    else if (r.left - gap - cw >= 0) { top = beside; left = r.left - gap - cw; }
     else { top = vh - ch - 18; left = Math.max(12, (vw - cw) / 2); }
+    cramped = top === vh - ch - 18;
     card.style.top = top + "px";
     card.style.left = left + "px";
   };
@@ -228,8 +241,12 @@ document.addEventListener("DOMContentLoaded", () => {
     card.querySelector("p").textContent = el.dataset.tourText || "";
     card.querySelector(".tour-count").textContent = `${index + 1}/${steps.length}`;
     card.querySelector(".tour-next").textContent = last ? "Done" : "Next";
-    el.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
     place();
+    if (cramped) {   // no free side: move the item up so the description covers as little of it as possible
+      window.scrollBy({ top: el.getBoundingClientRect().top - 84, behavior: "instant" });
+      place();
+    }
     card.querySelector(".tour-next").focus({ preventScroll: true });
   };
 
