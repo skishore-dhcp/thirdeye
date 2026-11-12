@@ -6,8 +6,9 @@ import os
 import re
 import secrets
 import time
-from datetime import timedelta
+from datetime import timedelta, timezone
 from functools import wraps
+from zoneinfo import ZoneInfo
 
 from flask import (Flask, abort, flash, g, get_flashed_messages, jsonify, redirect, render_template,
                    request, send_file, session, url_for)
@@ -218,6 +219,21 @@ def register(app):
             return None
         return {"username": u.username, "role": u.role, "is_authorized": u.is_authorized, "is_admin": u.is_admin,
                 "org_id": u.org_id, "org_name": u.org.name}
+
+    def viewer_zone():
+        name = request.cookies.get("tz", "")
+        if name and len(name) <= 64 and re.fullmatch(r"[A-Za-z0-9_+\-/]+", name):
+            try:
+                return ZoneInfo(name)
+            except Exception:
+                pass
+        try:
+            minutes = int(request.cookies.get("tzo", ""))
+        except ValueError:
+            return timezone.utc
+        if abs(minutes) > 14 * 60:
+            return timezone.utc
+        return timezone(timedelta(minutes=-minutes))
 
     def page(template, status=200, **ctx):
         ctx["user"] = user_dict(g.user)
@@ -722,7 +738,7 @@ def register(app):
             result = checks.run_pipeline(
                 input_type=input_type, text=text, pdf_bytes=pdf_bytes, image_bytes=image_bytes, rules=active_rules(g.user.org_id),
                 brand={"colors": brand.colors, "tolerance": brand.tolerance, "logo": brand.logo_blob},
-                judge=cfg.get("LLM_JUDGE") or default_judge, cfg=cfg)
+                judge=cfg.get("LLM_JUDGE") or default_judge, cfg=cfg, zone=viewer_zone())
         except checks.ContentError as exc:
             return reject(str(exc))
 
@@ -850,7 +866,7 @@ def register(app):
     @login_required
     def reports_page():
         stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
-        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"])
+        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"], viewer_zone())
         return page("reports.html", org={"id": g.user.org_id, "name": g.user.org.name}, summary=summary,
                     metrics=[{"label": label, "value": value} for label, value in reports.org_metrics(summary)],
                     charts=reports.org_charts(summary, 720, 350), download_url=url_for("report_download"))
@@ -862,8 +878,8 @@ def register(app):
     @login_required
     def report_download():
         stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
-        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"])
-        data = reports.org_report(g.user.org.name, g.user.org_id, summary, utcnow(), cfg["REPORT_DAYS"])
+        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"], viewer_zone())
+        data = reports.org_report(g.user.org.name, g.user.org_id, summary, utcnow(), cfg["REPORT_DAYS"], viewer_zone())
         return pdf_response(data, "thirdeye_organization_report.pdf")
 
     @app.route("/history/download")
@@ -871,7 +887,8 @@ def register(app):
     def history_download():
         stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
         rows, total = stats.history_rows(g.user.org_id, None if g.user.is_authorized else g.user.id, cfg["HISTORY_PDF_MAX_ROWS"])
-        data = reports.history_report(g.user.org.name, g.user.org_id, g.user.username, g.user.role, rows, g.user.is_authorized, utcnow(), total)
+        data = reports.history_report(g.user.org.name, g.user.org_id, g.user.username, g.user.role, rows, g.user.is_authorized, utcnow(), total,
+                                      viewer_zone())
         return pdf_response(data, "thirdeye_full_history.pdf")
 
     @app.route("/profile")

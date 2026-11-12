@@ -1,6 +1,6 @@
 import json
 from collections import Counter
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from models import ReportEvent, Submission, User, db, utcnow
 
@@ -105,7 +105,8 @@ def user_counts(user):
             "pending": by.get("Pending", 0)}
 
 
-def org_summary(org_id, days=30):
+def org_summary(org_id, days=30, zone=None):
+    zone = zone or timezone.utc
     roles = dict(db.session.query(User.role, db.func.count(User.id)).filter(User.org_id == org_id).group_by(User.role).all())
     rows = db.session.query(ReportEvent.status, ReportEvent.content_type, ReportEvent.issue_count, ReportEvent.fix_count,
                             ReportEvent.issue_types_json, ReportEvent.issue_labels_json, ReportEvent.created_at) \
@@ -122,8 +123,8 @@ def org_summary(org_id, days=30):
             labels.update(json.loads(labels_json or "[]"))
             kinds.update(json.loads(types_json or "{}"))
         if created:
-            per_day[created.date()] += 1
-    today = utcnow().date()
+            per_day[created.replace(tzinfo=timezone.utc).astimezone(zone).date()] += 1
+    today = utcnow().replace(tzinfo=timezone.utc).astimezone(zone).date()
     activity = [((today - timedelta(days=d)).strftime("%b %d"), per_day.get(today - timedelta(days=d), 0))
                 for d in range(days - 1, -1, -1)]
     kind_names = {"must_not_use": "Must not use", "must_include": "Must include", "tone": "Tone / Style", "logo": "Logo", "color": "Color"}

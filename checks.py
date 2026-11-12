@@ -661,7 +661,7 @@ def _short(text, n=80):
     return text if len(text) <= n else text[:n].rstrip() + "..."
 
 
-def run_pipeline(*, input_type, text, pdf_bytes=None, rules, brand, judge, cfg, image_bytes=None):
+def run_pipeline(*, input_type, text, pdf_bytes=None, rules, brand, judge, cfg, image_bytes=None, zone=None):
     notes, scanned, doc, image, low_ocr = [], False, None, None, False
     if input_type == "pdf":
         doc = open_pdf(pdf_bytes, cfg["MAX_PDF_PAGES"])
@@ -788,7 +788,7 @@ def run_pipeline(*, input_type, text, pdf_bytes=None, rules, brand, judge, cfg, 
         if edited:
             files["corrected.pdf"] = edited
     files["corrected_text.txt"] = corrected
-    files["report.pdf"] = reports.upload_report(input_type, issues, result["notes"], utcnow())
+    files["report.pdf"] = reports.upload_report(input_type, issues, result["notes"], utcnow(), zone)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for name, content in files.items():

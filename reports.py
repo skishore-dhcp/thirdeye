@@ -1,5 +1,6 @@
 import math
 import re
+from datetime import timezone
 from xml.sax.saxutils import escape
 
 try:
@@ -383,15 +384,29 @@ def svg_height(svg):
     return int(m.group(1)) + 26 if m else 120
 
 
-def stamp(moment):
-    return moment.strftime("%Y-%m-%d %H:%M UTC") if moment else "-"
+def zone_label(zone, moment):
+    key = getattr(zone, "key", None)
+    if key:
+        return key
+    minutes = int(moment.replace(tzinfo=timezone.utc).astimezone(zone).utcoffset().total_seconds() // 60)
+    if minutes == 0:
+        return "UTC"
+    return "UTC%s%02d:%02d" % ("+" if minutes > 0 else "-", abs(minutes) // 60, abs(minutes) % 60)
 
 
-def upload_report(input_type, issues, notes, moment):
+def stamp(moment, zone=None, label=True):
+    if not moment:
+        return "-"
+    zone = zone or timezone.utc
+    text = moment.replace(tzinfo=timezone.utc).astimezone(zone).strftime("%Y-%m-%d %H:%M")
+    return f"{text} ({zone_label(zone, moment)})" if label else text
+
+
+def upload_report(input_type, issues, notes, moment, zone=None):
     label = {"pdf": "PDF", "image": "Image"}.get(input_type, "Text")
     manual = sum(1 for i in issues if i.get("manual"))
     auto = sum(1 for i in issues if i.get("fix_kind", "none") != "none" and not i.get("manual"))
-    rep = Report("Content check report", f"Generated {stamp(moment)}")
+    rep = Report("Content check report", f"Generated {stamp(moment, zone)}")
     rep.metrics([("Content type", label), ("Issues found", len(issues)), ("Fixed automatically", auto), ("Manual editing needed", manual)])
     if manual:
         rep.paragraph("MANUAL EDITING NEEDED: items marked MANUAL EDIT cannot be fixed automatically.", 9.5, "#8a2f22")
@@ -429,8 +444,8 @@ def org_metrics(summary):
             ("Pending", summary["pending"]), ("Issues found", summary["issues_found"])]
 
 
-def org_report(org_name, org_id, summary, moment, days):
-    rep = Report("Organization report", f"{_plain(org_name)} (ID {org_id})  |  Generated {stamp(moment)}")
+def org_report(org_name, org_id, summary, moment, days, zone=None):
+    rep = Report("Organization report", f"{_plain(org_name)} (ID {org_id})  |  Generated {stamp(moment, zone)}")
     rep.metrics(org_metrics(summary))
     charts = org_charts(summary, int(rep.width), int(rep.width / 2 - 8))
     rep.heading("Approvals and content", 220)
@@ -444,17 +459,17 @@ def org_report(org_name, org_id, summary, moment, days):
     return rep.finish()
 
 
-def history_report(org_name, org_id, username, role, rows, show_user, moment, total=None):
+def history_report(org_name, org_id, username, role, rows, show_user, moment, total=None, zone=None):
     scope = "All members" if show_user else f"Only your own entries ({_plain(username)})"
     total = len(rows) if total is None else total
     count = f"{len(rows)} entries" if total <= len(rows) else f"newest {len(rows)} of {total} entries"
-    rep = Report("Full history", f"{_plain(org_name)} (ID {org_id})  |  {scope}  |  Generated {stamp(moment)}  |  {count}")
+    rep = Report("Full history", f"{_plain(org_name)} (ID {org_id})  |  {scope}  |  Generated {stamp(moment, zone)}  |  {count}")
     columns = [("Date and Time", 17), ("Content Type", 11), ("Issues Found", 12), ("Status", 10), ("Remark", 28)]
     if show_user:
         columns.insert(0, ("Username", 13))
     table = []
     for r in rows:
-        line = [stamp(r["when"]), r["content_type"], str(r["issue_count"]), (r["status"], STATUS_COLORS.get(r["status"], INK)),
+        line = [stamp(r["when"], zone, False), r["content_type"], str(r["issue_count"]), (r["status"], STATUS_COLORS.get(r["status"], INK)),
                 r["remark"] or "-"]
         if show_user:
             line.insert(0, r["username"])
