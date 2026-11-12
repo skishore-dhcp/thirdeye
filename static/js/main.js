@@ -103,3 +103,148 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Remarks: "View remark" opens a small box beside the link; closes on outside click or Escape
+  let openPop = null;
+  const closePop = () => {
+    if (!openPop) return;
+    openPop.pop.hidden = true;
+    openPop.link.setAttribute("aria-expanded", "false");
+    openPop = null;
+  };
+  const placePop = () => {
+    if (!openPop) return;
+    const { link, pop } = openPop, r = link.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > window.innerHeight) { closePop(); return; }
+    const pw = pop.offsetWidth, ph = pop.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    let left, top;
+    if (r.right + 10 + pw <= vw - 8) {
+      left = r.right + 10;
+      top = Math.max(8, Math.min(r.top - 6, vh - ph - 8));
+    } else {
+      left = Math.max(8, Math.min(r.left, vw - pw - 8));
+      top = r.bottom + 8 + ph <= vh - 8 ? r.bottom + 8 : Math.max(8, r.top - 8 - ph);
+    }
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  };
+  document.querySelectorAll(".remark-link").forEach((link) =>
+    link.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const pop = link.parentElement.querySelector(".remark-pop");
+      if (openPop && openPop.link === link) { closePop(); return; }
+      closePop();
+      pop.hidden = false;
+      link.setAttribute("aria-expanded", "true");
+      openPop = { link, pop };
+      placePop();
+    }));
+  document.addEventListener("click", (e) => { if (openPop && !openPop.pop.contains(e.target)) closePop(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePop(); });
+  window.addEventListener("scroll", placePop, { passive: true });
+  window.addEventListener("resize", placePop);
+
+  // Remarks: a remark is required to reject, optional to approve
+  document.querySelectorAll("[data-remark-required]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const box = btn.closest("form").querySelector(".remark-input");
+      box.required = btn.dataset.remarkRequired === "1";
+      box.setCustomValidity("");
+    }));
+
+  // Tutorial tour (dashboard only)
+  const config = document.getElementById("tour-config");
+  if (!config) return;
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  let steps = [], index = 0, hole, card, blocker, frame = 0, active = false;
+
+  const collect = () =>
+    Array.from(document.querySelectorAll("[data-tour-title]"))
+      .filter((el) => el.getClientRects().length)
+      .sort((a, b) => Number(a.dataset.tourOrder) - Number(b.dataset.tourOrder));
+
+  const markSeen = () => {
+    if (!meta || !config.dataset.seenUrl) return;
+    fetch(config.dataset.seenUrl, { method: "POST", headers: { "X-CSRF-Token": meta.content } }).catch(() => {});
+  };
+
+  const place = () => {
+    if (!active) return;
+    const el = steps[index], r = el.getBoundingClientRect(), pad = 8;
+    hole.style.top = r.top - pad + "px";
+    hole.style.left = r.left - pad + "px";
+    hole.style.width = r.width + pad * 2 + "px";
+    hole.style.height = r.height + pad * 2 + "px";
+    hole.style.borderRadius = getComputedStyle(el).borderRadius === "0px" ? "28px" : getComputedStyle(el).borderRadius;
+    const cw = card.offsetWidth, ch = card.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    let top, left = Math.max(12, Math.min(r.left, vw - cw - 12));
+    if (r.bottom + pad + 14 + ch <= vh) top = r.bottom + pad + 14;
+    else if (r.top - pad - 14 - ch >= 0) top = r.top - pad - 14 - ch;
+    else { top = vh - ch - 18; left = Math.max(12, (vw - cw) / 2); }
+    card.style.top = top + "px";
+    card.style.left = left + "px";
+  };
+  const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
+
+  const show = () => {
+    const el = steps[index], last = index === steps.length - 1;
+    card.querySelector("h3").textContent = el.dataset.tourTitle;
+    card.querySelector("p").textContent = el.dataset.tourText || "";
+    card.querySelector(".tour-count").textContent = `${index + 1}/${steps.length}`;
+    card.querySelector(".tour-next").textContent = last ? "Done" : "Next";
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+    place();
+    card.querySelector(".tour-next").focus({ preventScroll: true });
+  };
+
+  const end = () => {
+    if (!active) return;
+    active = false;
+    cancelAnimationFrame(frame);
+    [hole, card, blocker].forEach((n) => n && n.remove());
+    window.removeEventListener("resize", schedule);
+    window.removeEventListener("scroll", schedule);
+    document.removeEventListener("keydown", onKey);
+    markSeen();
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") end();
+    else if (e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); next(); }
+  };
+  const next = () => {
+    if (index >= steps.length - 1) { end(); return; }
+    index += 1;
+    show();
+  };
+
+  const start = () => {
+    steps = collect();
+    if (!steps.length || active) return;
+    active = true;
+    index = 0;
+    blocker = document.createElement("div");
+    blocker.className = "tour-blocker";
+    hole = document.createElement("div");
+    hole.className = "tour-hole";
+    card = document.createElement("div");
+    card.className = "tour-card";
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-live", "polite");
+    card.innerHTML = '<h3></h3><p></p><div class="tour-foot"><span class="tour-count"></span>' +
+      '<span class="tour-buttons"><button type="button" class="btn btn-small btn-on-dark tour-skip">Skip Tour</button>' +
+      '<button type="button" class="btn btn-small tour-next">Next</button></span></div>';
+    document.body.append(blocker, hole, card);
+    card.querySelector(".tour-skip").addEventListener("click", end);
+    card.querySelector(".tour-next").addEventListener("click", next);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, { passive: true });
+    document.addEventListener("keydown", onKey);
+    show();
+  };
+
+  if (config.dataset.auto === "1") {
+    if (new URLSearchParams(location.search).has("tour")) history.replaceState(null, "", location.pathname);
+    start();
+  }
+});
