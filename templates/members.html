@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes, when with context %}
+{% block title %}Member Management - ThirdEye{% endblock %}
+{% block body_class %}page-inner{% endblock %}
+{% block main %}
+<div class="inner">
+  <a class="btn btn-small btn-on-dark back" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+  <section class="card wide-card">
+    <h1>Member Management</h1>
+    {{ flashes(messages) }}
+    <p class="muted">{{ org.name }} &middot; Organization ID <strong>{{ org.id }}</strong>. New members need this ID, their username and their password to log in.</p>
+
+    <h2>Add a member</h2>
+    <form class="rule-row" method="post" action="{{ url_for('member_add') }}">
+      {{ csrf() }}
+      <label class="sr-only" for="new-username">Username</label>
+      <input id="new-username" class="input grow" type="text" name="username" maxlength="30" placeholder="Username" autocomplete="off" required>
+      <label class="sr-only" for="new-password">Password</label>
+      <input id="new-password" class="input grow" type="password" name="password" placeholder="Password (at least 6 characters)" autocomplete="new-password" required>
+      <button class="btn" type="submit">Add member</button>
+    </form>
+
+    <h2>Members ({{ members|length }})</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Username</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for m in members %}
+          <tr>
+            <td>{{ m.username }}{% if m.is_self %} <span class="muted small">(you)</span>{% endif %}</td>
+            <td><span class="role role-{{ m.role|lower }}">{{ m.role }}</span></td>
+            <td>{{ when(m.created_at) }}</td>
+            <td>
+              {% if m.can_manage %}
+              <div class="member-actions">
+                {% if m.role == 'Member' %}
+                <form method="post" action="{{ url_for('member_role', user_id=m.id) }}">{{ csrf() }}<input type="hidden" name="role" value="Authorized"><button class="btn btn-small" type="submit">Promote to Authorized</button></form>
+                {% else %}
+                <form method="post" action="{{ url_for('member_role', user_id=m.id) }}">{{ csrf() }}<input type="hidden" name="role" value="Member"><button class="btn btn-small" type="submit">Demote to Member</button></form>
+                {% endif %}
+                <form method="post" action="{{ url_for('member_remove', user_id=m.id) }}" onsubmit="return confirm('Remove {{ m.username }}? Their requests are removed with the account.');">{{ csrf() }}<button class="btn btn-small btn-on-dark" type="submit">Remove</button></form>
+              </div>
+              {% elif m.protected %}<span class="muted small">Built-in demo account</span>
+              {% else %}<span class="muted small">&mdash;</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Message to everyone</h2>
+    <form method="post" action="{{ url_for('member_message') }}">
+      {{ csrf() }}
+      <label class="sr-only" for="message">Message</label>
+      <textarea id="message" class="input textarea" name="message" rows="3" maxlength="{{ max_message_chars }}" placeholder="Write a short message. It appears in every member's Alerts." required></textarea>
+      <div class="actions"><button class="btn" type="submit">Send to all members</button></div>
+      <p class="muted small">Up to {{ max_message_chars }} characters. Everyone else in the organization sees it in their Alerts.</p>
+    </form>
+  </section>
+</div>
+{% endblock %}

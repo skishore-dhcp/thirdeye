@@ -6,28 +6,17 @@
 <section class="card auth-card">
   <h1>Welcome back</h1>
   {{ flashes(messages) }}
-  {% if demo_accounts %}
-  <div class="note demo-box">
-    <strong>Demo access</strong>
-    <p class="small">New here? Pick a role to try the app. No typing needed.</p>
-    {% for a in demo_accounts %}
-    <form class="demo-form" method="post" action="{{ url_for('demo_login', key=a.key) }}">
-      {{ csrf() }}
-      <button class="btn" type="submit">{{ a.label }}</button>
-      <span class="muted small">{{ a.about }}</span>
-    </form>
-    {% endfor %}
-    <p class="muted small">Or log in below with:{% for a in demo_accounts %}<br>{{ a.role }}: <strong>{{ a.username }}</strong> / <strong>{{ a.password }}</strong>{% endfor %}</p>
-  </div>
-  {% endif %}
   <form method="post" action="{{ url_for('login') }}">
     {{ csrf() }}
+    <label class="sr-only" for="org_id">Organization ID</label>
+    <input id="org_id" class="input" type="number" name="org_id" min="1" step="1" inputmode="numeric" placeholder="Organization ID" required autofocus>
     <label class="sr-only" for="username">Username</label>
-    <input id="username" class="input" type="text" name="username" placeholder="Username" autocomplete="username" required autofocus>
+    <input id="username" class="input" type="text" name="username" placeholder="Username" autocomplete="username" required>
     <label class="sr-only" for="password">Password</label>
     <input id="password" class="input" type="password" name="password" placeholder="Password" autocomplete="current-password" required>
-    <p class="muted">Don't have an account yet? <a href="{{ url_for('signup') }}">Sign up</a></p>
     <button class="btn" type="submit">Login</button>
   </form>
+  <p class="muted">New here? <a href="{{ url_for('org_new') }}">Create an organization</a></p>
+  {% if demo_available %}<p class="muted">Just looking around? <a href="{{ url_for('demo_page') }}">Try the demo</a></p>{% endif %}
 </section>
 {% endblock %}

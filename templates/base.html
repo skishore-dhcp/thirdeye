@@ -1,9 +1,10 @@
-<!doctype html>
+{% from "_macros.html" import when with context %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ThirdEye{% endblock %}</title>
+  {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <link rel="icon" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,14 +13,27 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <header class="titlebar">
-    <a class="brand" href="{{ url_for('dashboard') if user else url_for('login') }}">
+    <a class="brand" href="{{ url_for('dashboard') if user else url_for('index') }}">
       <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="" width="36" height="36">
       <span>ThirdEye</span>
     </a>
     {% if user %}
     <div class="userbox">
+      <span class="muted small" title="Organization">{{ user.org_name }} &middot; ID {{ user.org_id }}</span>
       <span class="username">{{ user.username }}</span>
       <span class="role role-{{ user.role|lower }}">{{ user.role }}</span>
+      <details class="menu">
+        <summary class="btn btn-small btn-on-dark">Menu{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
+        <div class="menu-panel">
+          <details class="menu-item" id="alerts-menu" data-unseen="{{ unseen_alerts }}" data-seen-url="{{ url_for('alerts_seen') }}">
+            <summary>Alerts{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
+            <ul class="alert-list">
+              {% for a in alerts %}<li class="{{ 'unseen' if a.unseen }}">{{ a.message }}<time class="local-time" datetime="{{ a.created_at }}">{{ a.created_at[:16]|replace('T', ' ') }} UTC</time></li>
+              {% else %}<li>No alerts yet.</li>{% endfor %}
+            </ul>
+          </details>
+        </div>
+      </details>
       <a class="btn btn-small btn-on-dark" href="{{ url_for('logout') }}">Log Out</a>
     </div>
     {% endif %}

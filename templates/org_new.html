@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes with context %}
+{% block title %}Create an organization - ThirdEye{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block main %}
+<section class="card auth-card">
+  <h1>Create an organization</h1>
+  {{ flashes(messages) }}
+  <p class="muted">You become the organization's Admin. You will be given an organization ID to share with your team.</p>
+  <form method="post" action="{{ url_for('org_new') }}">
+    {{ csrf() }}
+    <label class="sr-only" for="org_name">Organization name</label>
+    <input id="org_name" class="input" type="text" name="org_name" maxlength="60" placeholder="Organization name" required autofocus>
+    <label class="sr-only" for="username">Admin username</label>
+    <input id="username" class="input" type="text" name="username" maxlength="30" placeholder="Your username (you will be the Admin)" autocomplete="username" required>
+    <label class="sr-only" for="password">Password</label>
+    <input id="password" class="input" type="password" name="password" placeholder="Password" autocomplete="new-password" required>
+    <label class="sr-only" for="confirm_password">Confirm password</label>
+    <input id="confirm_password" class="input" type="password" name="confirm_password" placeholder="Confirm password" autocomplete="new-password" required>
+    <button class="btn" type="submit">Create organization</button>
+  </form>
+  <p class="muted">Already have an organization? <a href="{{ url_for('login') }}">Log in</a></p>
+</section>
+{% endblock %}

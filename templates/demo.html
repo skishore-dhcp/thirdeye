@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes with context %}
+{% block title %}Welcome back - ThirdEye{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block main %}
+<section class="card auth-card">
+  <h1>Welcome back</h1>
+  {{ flashes(messages) }}
+  <p class="muted">New here? Pick a role to explore a ready-made demo organization. No account needed.</p>
+  {% for a in demo_accounts %}
+  <form class="demo-form" method="post" action="{{ url_for('demo_login', key=a.key) }}">
+    {{ csrf() }}
+    <button class="btn" type="submit">{{ a.label }}</button>
+    <span class="muted small">{{ a.about }}</span>
+  </form>
+  {% endfor %}
+  <div class="note demo-box">
+    <p class="small">Prefer to type? Use organization ID <strong>{{ demo_org_id }}</strong> on the login page with:</p>
+    <p class="muted small">{% for a in demo_accounts %}{{ a.role }}: <strong>{{ a.username }}</strong> / <strong>{{ a.password }}</strong>{% if not loop.last %}<br>{% endif %}{% endfor %}</p>
+  </div>
+  <p class="muted">For normal login, <a href="{{ url_for('login') }}">click here</a>.</p>
+</section>
+{% endblock %}
