@@ -2,9 +2,12 @@ import colorsys
 import io
 import re
 import zipfile
+from datetime import datetime, timezone
 
 import cv2
 import numpy as np
+
+import reports
 
 try:
     import pymupdf as fitz
@@ -15,6 +18,10 @@ KIND_LABELS = {
     "must_not_use": "Must not use", "must_include": "Must include", "tone": "Tone / Style",
     "logo": "Logo", "color": "Color",
 }
+
+
+def utcnow():
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class ContentError(Exception):
@@ -601,25 +608,8 @@ def edit_pdf(data, issues, scanned=False):
                      f"{'that page' if pages == 1 else 'those pages'}.")
         if unreadable:
             notes.append("These required words contain characters that cannot be shown on that page (shown as ?): "
-                         + ", ".join(f'"{u}"' for u in unreadable) + ". See the report for the exact text.")
+                         + ", ".join(f'"{u}"' for u in unreadable) + ". See the corrected text file for the exact text.")
     return (doc.tobytes(garbage=3, deflate=True) if changed else None), notes
-
-
-def build_report(input_type, issues, notes):
-    label = {"pdf": "PDF", "image": "Image"}.get(input_type, "Text")
-    lines = ["ThirdEye check report", f"Content type: {label}", f"Issues found: {len(issues)}"]
-    if any(i.get("manual") for i in issues):
-        lines.append("MANUAL EDITING NEEDED: items marked [MANUAL EDIT] cannot be fixed automatically.")
-    lines.append("")
-    for n, i in enumerate(issues, 1):
-        tag = "[MANUAL EDIT] " if i.get("manual") else ""
-        lines += [f"{n}. {tag}[{KIND_LABELS[i['type']]}] {i['problem']}"]
-        if i["excerpt"]:
-            lines.append(f"   Text: {i['excerpt']}")
-        lines.append(f"   Fix: {i['suggestion']}")
-    if notes:
-        lines += ["", "Notes:"] + [f"- {n}" for n in notes]
-    return "\n".join(lines) + "\n"
 
 
 def public_issue(i):
@@ -787,7 +777,6 @@ def run_pipeline(*, input_type, text, pdf_bytes=None, rules, brand, judge, cfg, 
     if not issues:
         return result
 
-    report = build_report(input_type, issues, notes)
     if input_type == "text":
         result.update(output=corrected.encode("utf-8"), output_name="corrected_text.txt", mimetype="text/plain")
         return result
@@ -796,11 +785,10 @@ def run_pipeline(*, input_type, text, pdf_bytes=None, rules, brand, judge, cfg, 
         edited, edit_notes = edit_pdf(pdf_bytes, issues, scanned=scanned)
         if edit_notes:
             result["notes"] += edit_notes
-            report = build_report(input_type, issues, result["notes"])
         if edited:
             files["corrected.pdf"] = edited
     files["corrected_text.txt"] = corrected
-    files["report.txt"] = report
+    files["report.pdf"] = reports.upload_report(input_type, issues, result["notes"], utcnow())
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for name, content in files.items():

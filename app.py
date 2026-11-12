@@ -18,8 +18,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import checks
 import insights
 import llm
+import reports
+import stats
 from config import Config
-from models import (Alert, BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Organization, Setting, Submission, User, db, iso, utcnow)
+from models import (Alert, BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Organization, ReportEvent, Setting, Submission,
+                    User, db, iso, utcnow)
 
 HEX_RE = re.compile(r"^#?[0-9a-fA-F]{6}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
@@ -108,11 +111,18 @@ def init_db(app):
         if inspect(db.engine).has_table(table) and "org_id" not in column_names(table):
             ddl(f"DROP TABLE {table}")
     db.create_all()
+    flag_false = "FALSE" if postgres else "0"
     for table in ("guidelines", "default_rules"):
         if "replacement" not in column_names(table):
             ddl(f"ALTER TABLE {table} ADD COLUMN replacement VARCHAR(200)")
     if "alerts_seen_at" not in column_names("users"):
         ddl("ALTER TABLE users ADD COLUMN alerts_seen_at TIMESTAMP")
+    if "tour_seen" not in column_names("users"):
+        ddl(f"ALTER TABLE users ADD COLUMN tour_seen BOOLEAN NOT NULL DEFAULT {flag_false}")
+    if "remark" not in column_names("submissions"):
+        ddl("ALTER TABLE submissions ADD COLUMN remark VARCHAR(300)")
+    if "event_id" not in column_names("submissions"):
+        ddl("ALTER TABLE submissions ADD COLUMN event_id INTEGER")
     added = [t for t in ("users", "guidelines", "brand_settings", "submissions") if "org_id" not in column_names(t)]
     for table in added:
         ddl(f"ALTER TABLE {table} ADD COLUMN org_id INTEGER REFERENCES organizations (id)")
@@ -121,8 +131,9 @@ def init_db(app):
         db.session.commit()
     for table in ("users", "guidelines", "brand_settings", "submissions"):
         ddl(f"UPDATE {table} SET org_id = :org WHERE org_id IS NULL", org=demo_org)
+    stats.backfill()
     if postgres:
-        for table in ("organizations", "users", "guidelines", "default_rules", "brand_settings", "submissions", "alerts"):
+        for table in ("organizations", "users", "guidelines", "default_rules", "brand_settings", "submissions", "alerts", "report_events"):
             seq = db.session.execute(sql_text("SELECT pg_get_serial_sequence(:t, 'id')"), {"t": table}).scalar()
             if seq:
                 top = db.session.execute(sql_text(f"SELECT COALESCE(MAX(id), 0) FROM {table}")).scalar()
@@ -337,6 +348,8 @@ def register(app):
         session.clear()
         session["user_id"] = user.id
         session["csrf"] = secrets.token_hex(16)
+        if protected_account(user):
+            session["tour"] = True
         if message:
             flash(message, "success")
         if wants_json():
@@ -346,6 +359,8 @@ def register(app):
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "GET":
+            if g.user:
+                return redirect(url_for("dashboard"))
             return page("login.html", demo_available=cfg["DEMO_MODE"])
         raw_org, name, password = field("org_id").strip(), field("username").strip(), field("password")
         org_id = int(raw_org) if raw_org.isdigit() and len(raw_org) <= 9 else None
@@ -481,6 +496,7 @@ def register(app):
             return err
         name = target.username
         Alert.query.filter_by(user_id=target.id).delete()
+        stats.retire_user_submissions(target.id, cfg["DRAFT_TTL_MINUTES"])
         Submission.query.filter_by(user_id=target.id).delete()
         db.session.delete(target)
         db.session.commit()
@@ -510,7 +526,18 @@ def register(app):
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return page("dashboard.html", insights=insights.get_insights(g.user.org_id, cfg["INSIGHT_LIMIT"], cfg["INSIGHT_THRESHOLD"]))
+        flagged = bool(session.pop("tour", False))
+        auto_tour = flagged or request.args.get("tour") == "1" or (not g.user.tour_seen and not protected_account(g.user))
+        return page("dashboard.html", auto_tour=auto_tour, tour_seen_url=url_for("tour_seen"),
+                    insights=insights.get_insights(g.user.org_id, cfg["INSIGHT_LIMIT"], cfg["INSIGHT_THRESHOLD"]))
+
+    @app.route("/tour/seen", methods=["POST"])
+    @login_required
+    def tour_seen():
+        if not g.user.tour_seen:
+            g.user.tour_seen = True
+            db.session.commit()
+        return jsonify({"ok": True})
 
     @app.route("/demo/reset", methods=["POST"])
     @authorized_required
@@ -518,7 +545,7 @@ def register(app):
         org_id = cfg["DEMO_ORG_ID"]
         if not cfg["DEMO_MODE"] or g.user.org_id != org_id:
             return fail("Demo mode is not on.", 404, "dashboard")
-        for model in (Alert, Submission, Guideline, IssueCounter, Insight):
+        for model in (Alert, Submission, ReportEvent, Guideline, IssueCounter, Insight):
             model.query.filter_by(org_id=org_id).delete()
         keep = {s["username"].lower() for s in demo_account_specs(cfg)} | {g.user.username.lower()}
         for u in User.query.filter_by(org_id=org_id).all():
@@ -685,8 +712,7 @@ def register(app):
             if len(image_bytes) > cfg["MAX_IMAGE_BYTES"]:
                 return reject(f"The image is larger than {cfg['MAX_IMAGE_BYTES'] // (1024 * 1024)} MB.")
 
-        Submission.query.filter(Submission.status == "Draft",
-                                Submission.created_at < utcnow() - timedelta(minutes=cfg["DRAFT_TTL_MINUTES"])).delete()
+        stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"])
         brand = brand_for(g.user.org_id)
         try:
             result = checks.run_pipeline(
@@ -707,9 +733,12 @@ def register(app):
                              output_blob=result["output"], output_name=result["output_name"],
                              output_mimetype=result["mimetype"])
             db.session.add(sub)
+            db.session.flush()
+            stats.record_check(g.user, input_type, issues, sub)
             db.session.commit()
             out["submission_id"] = sub.id
         else:
+            stats.record_check(g.user, input_type, issues)
             db.session.commit()
         return page("check.html", result=out, **check_ctx())
 
@@ -718,13 +747,15 @@ def register(app):
         if sub is None or sub.user_id != g.user.id or sub.status != "Draft":
             return None, fail("This result is no longer available. Please run the check again.", 404)
         if sub.created_at < utcnow() - timedelta(minutes=cfg["DRAFT_TTL_MINUTES"]):
+            stats.mark_expired(sub, cfg["DRAFT_TTL_MINUTES"])
             db.session.delete(sub)
             db.session.commit()
             return None, fail("This result expired. Please run the check again.", 410)
         return sub, None
 
-    def resolve(sub, status):
+    def resolve(sub, status, remark=None):
         sub.status, sub.resolved_at, sub.resolved_by = status, utcnow(), g.user.username
+        stats.record_decision(sub, status, g.user.username, remark)
         if status == "Approved":
             insights.record_approved(sub.org_id, sub.issues, cfg["INSIGHT_THRESHOLD"])
         db.session.flush()
@@ -765,7 +796,7 @@ def register(app):
         return {"id": s.id, "username": s.username, "input_type": s.input_type,
                 "content_type": {"pdf": "PDF", "image": "Image"}.get(s.input_type, "Text"), "status": s.status,
                 "created_at": iso(s.created_at), "resolved_at": iso(s.resolved_at), "resolved_by": s.resolved_by,
-                "issue_count": len(s.issues), "issues": [checks.public_issue(i) for i in s.issues],
+                "issue_count": len(s.issues), "remark": s.remark, "issues": [checks.public_issue(i) for i in s.issues],
                 "manual_edit": any(i.get("manual") for i in s.issues),
                 "can_decide": g.user.is_authorized and s.status == "Pending",
                 "download_url": url_for("download", sub_id=s.id) if can_dl else None}
@@ -787,11 +818,17 @@ def register(app):
         sub = Submission.query.filter_by(id=sub_id, org_id=g.user.org_id).first()
         if sub is None or sub.status != "Pending":
             return fail("This request is no longer pending.", 404, "requests_page")
+        remark = " ".join(field("remark").split())
+        if status == "Rejected" and not remark:
+            return fail("Write a remark explaining the rejection.", 400, "requests_page")
+        if len(remark) > cfg["MAX_REMARK_CHARS"]:
+            return fail(f"Remarks are limited to {cfg['MAX_REMARK_CHARS']} characters.", 400, "requests_page")
         uploader = db.session.get(User, sub.user_id)
         label = {"pdf": "PDF", "image": "Image"}.get(sub.input_type, "Text")
-        resolve(sub, status)
+        resolve(sub, status, remark)
         if uploader is not None and uploader.id != g.user.id:
-            notify(uploader, "request", f"Your {label} request was {status.lower()} by {g.user.username}.")
+            notify(uploader, "request", f"Your {label} request was {status.lower()} by {g.user.username}."
+                   + (f" Remark: {remark}" if remark else ""))
             db.session.commit()
         return done(f"Request {status.lower()}.", "requests_page", status=status)
 
@@ -804,6 +841,69 @@ def register(app):
     @authorized_required
     def reject_request(sub_id):
         return decide(sub_id, "Rejected")
+
+    @app.route("/reports")
+    @login_required
+    def reports_page():
+        stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
+        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"])
+        return page("reports.html", org={"id": g.user.org_id, "name": g.user.org.name}, summary=summary,
+                    metrics=[{"label": label, "value": value} for label, value in reports.org_metrics(summary)],
+                    charts=reports.org_charts(summary, 720, 350), download_url=url_for("report_download"))
+
+    def pdf_response(data, name):
+        return send_file(io.BytesIO(data), mimetype="application/pdf", as_attachment=True, download_name=name)
+
+    @app.route("/reports/download")
+    @login_required
+    def report_download():
+        stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
+        summary = stats.org_summary(g.user.org_id, cfg["REPORT_DAYS"])
+        data = reports.org_report(g.user.org.name, g.user.org_id, summary, utcnow(), cfg["REPORT_DAYS"])
+        return pdf_response(data, "thirdeye_organization_report.pdf")
+
+    @app.route("/history/download")
+    @login_required
+    def history_download():
+        stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
+        rows, total = stats.history_rows(g.user.org_id, None if g.user.is_authorized else g.user.id, cfg["HISTORY_PDF_MAX_ROWS"])
+        data = reports.history_report(g.user.org.name, g.user.org_id, g.user.username, g.user.role, rows, g.user.is_authorized, utcnow(), total)
+        return pdf_response(data, "thirdeye_full_history.pdf")
+
+    @app.route("/profile")
+    @login_required
+    def profile():
+        stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
+        return page("profile.html", me={"username": g.user.username, "role": g.user.role, "org_id": g.user.org_id,
+                                        "org_name": g.user.org.name, "created_at": iso(g.user.created_at)},
+                    counts=stats.user_counts(g.user), can_change_password=not protected_account(g.user),
+                    min_password=cfg["MIN_PASSWORD_LENGTH"])
+
+    @app.route("/profile/password", methods=["POST"])
+    @login_required
+    def change_password():
+        if protected_account(g.user):
+            return fail("This is a shared demo account, so its password cannot be changed.", 400, "profile")
+        key = (g.user.org_id, g.user.username.lower())
+        wait = login_lock_seconds(key)
+        if wait:
+            return fail(f"Too many wrong passwords. Please wait {math.ceil(wait / 60)} minute(s) and try again.", 429, "profile")
+        current, new, confirm = field("current_password"), field("new_password"), field("confirm_password")
+        if not check_password_hash(g.user.password_hash, current):
+            if len(failed_logins) > 1000:
+                failed_logins.clear()
+            failed_logins.setdefault(key, []).append(time.time())
+            return fail("The current password is incorrect.", 401, "profile")
+        if len(new) < cfg["MIN_PASSWORD_LENGTH"]:
+            return fail(f"The new password must be at least {cfg['MIN_PASSWORD_LENGTH']} characters.", 400, "profile")
+        if new != confirm:
+            return fail("The two new passwords do not match.", 400, "profile")
+        if new == current:
+            return fail("The new password must be different from the current one.", 400, "profile")
+        failed_logins.pop(key, None)
+        g.user.password_hash = generate_password_hash(new)
+        db.session.commit()
+        return done("Password changed.", "profile")
 
     @app.route("/download/<int:sub_id>")
     @login_required

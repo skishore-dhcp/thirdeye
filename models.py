@@ -31,6 +31,7 @@ class User(db.Model):
     role = db.Column(db.String(20), nullable=False, default="Member")
     created_at = db.Column(db.DateTime, default=utcnow)
     alerts_seen_at = db.Column(db.DateTime)
+    tour_seen = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     org = db.relationship("Organization")
 
@@ -112,6 +113,8 @@ class Submission(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     resolved_at = db.Column(db.DateTime)
     resolved_by = db.Column(db.String(40))
+    remark = db.Column(db.String(300))
+    event_id = db.Column(db.Integer)
 
     @property
     def issues(self):
@@ -135,3 +138,33 @@ class Insight(db.Model):
     issue_type = db.Column(db.String(20), nullable=False)
     times_triggered = db.Column(db.Integer, default=0, nullable=False)
     last_triggered = db.Column(db.DateTime, default=utcnow)
+
+
+class ReportEvent(db.Model):
+    __tablename__ = "report_events"
+    id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, index=True)
+    username = db.Column(db.String(40), nullable=False)
+    content_type = db.Column(db.String(10), nullable=False)
+    issue_count = db.Column(db.Integer, nullable=False, default=0)
+    fix_count = db.Column(db.Integer, nullable=False, default=0)
+    issue_types_json = db.Column(db.Text, default="{}")
+    issue_labels_json = db.Column(db.Text, default="[]")
+    manual_edit = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(10), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    resolved_at = db.Column(db.DateTime)
+    resolved_by = db.Column(db.String(40))
+    remark = db.Column(db.String(300))
+
+    @property
+    def issue_types(self):
+        return json.loads(self.issue_types_json or "{}")
+
+    @property
+    def issue_labels(self):
+        return json.loads(self.issue_labels_json or "[]")
+
+
+db.Index("ix_report_events_org_created", ReportEvent.org_id, ReportEvent.created_at)
