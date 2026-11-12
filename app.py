@@ -19,7 +19,7 @@ import checks
 import insights
 import llm
 from config import Config
-from models import (BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Setting, Submission, User, db, iso, utcnow)
+from models import (Alert, BrandSettings, DefaultRule, Guideline, Insight, IssueCounter, Organization, Setting, Submission, User, db, iso, utcnow)
 
 HEX_RE = re.compile(r"^#?[0-9a-fA-F]{6}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,30}$")
@@ -47,6 +47,8 @@ def create_app(overrides=None):
 
 def demo_account_specs(cfg):
     return [
+        {"key": "admin", "label": "Try as Admin", "role": "Admin", "username": cfg["DEMO_ADMIN_USERNAME"],
+         "password": cfg["DEMO_ADMIN_PASSWORD"], "about": "Owns the organization. Can do everything a reviewer can."},
         {"key": "reviewer", "label": "Try as Reviewer", "role": "Authorized", "username": cfg["DEMO_USERNAME"],
          "password": cfg["DEMO_PASSWORD"], "about": "Can approve requests and edit the guidelines."},
         {"key": "member", "label": "Try as Member", "role": "Member", "username": cfg["DEMO_MEMBER_USERNAME"],
@@ -54,47 +56,32 @@ def demo_account_specs(cfg):
     ]
 
 
-def seed_sample_rules(cfg):
-    existing = {(r.kind, r.text.lower()) for r in Guideline.query.all()}
+def brand_for(org_id):
+    brand = BrandSettings.query.filter_by(org_id=org_id).first()
+    if brand is None:
+        brand = BrandSettings(org_id=org_id, colors_json="[]", tolerance="Normal")
+        db.session.add(brand)
+        db.session.commit()
+    return brand
+
+
+def seed_sample_rules(cfg, org_id):
+    existing = {(r.kind, r.text.lower()) for r in Guideline.query.filter_by(org_id=org_id)}
     for entry in cfg["SAMPLE_RULES"]:
         kind, text = entry[0], entry[1]
         replacement = entry[2] if len(entry) > 2 else None
         if (kind, text.lower()) not in existing:
-            db.session.add(Guideline(kind=kind, text=text, replacement=replacement, created_by="demo"))
+            db.session.add(Guideline(org_id=org_id, kind=kind, text=text, replacement=replacement, created_by="sample"))
 
 
-def init_db(app):
-    db.create_all()
-    cols = inspect(db.engine)
-    for table in ("guidelines", "default_rules"):
-        if "replacement" not in {c["name"] for c in cols.get_columns(table)}:
-            db.session.execute(sql_text(f"ALTER TABLE {table} ADD COLUMN replacement VARCHAR(200)"))
-    db.session.commit()
-    wanted = {(entry[0], entry[1]) for entry in app.config["DEFAULT_RULES"]}
-    for row in DefaultRule.query.all():
-        if (row.kind, row.text) not in wanted:
-            db.session.delete(row)
-    for entry in app.config["DEFAULT_RULES"]:
-        kind, text = entry[0], entry[1]
-        repl = entry[2] if len(entry) > 2 else None
-        row = DefaultRule.query.filter_by(kind=kind, text=text).first()
-        if row is None:
-            db.session.add(DefaultRule(kind=kind, text=text, replacement=repl))
-        else:
-            row.replacement = repl
-    if not db.session.get(BrandSettings, 1):
-        db.session.add(BrandSettings(id=1, colors_json="[]", tolerance="Normal"))
-        db.session.flush()
-    demo = app.config["DEMO_MODE"]
-    brand = db.session.get(BrandSettings, 1)
-    if demo and not brand.colors:
-        brand.colors_json = json.dumps(sorted(app.config["SAMPLE_BRAND_COLORS"]))
-        brand.tolerance = app.config["SAMPLE_BRAND_TOLERANCE"]
-    for spec in demo_account_specs(app.config):
-        user = User.query.filter(func.lower(User.username) == spec["username"].lower()).first()
+def ensure_demo_accounts(cfg):
+    demo = cfg["DEMO_MODE"]
+    org_id = cfg["DEMO_ORG_ID"]
+    for spec in demo_account_specs(cfg):
+        user = User.query.filter(User.org_id == org_id, func.lower(User.username) == spec["username"].lower()).first()
         if demo:
             if user is None:
-                db.session.add(User(username=spec["username"], role=spec["role"],
+                db.session.add(User(org_id=org_id, username=spec["username"], role=spec["role"],
                                     password_hash=generate_password_hash(spec["password"])))
             else:
                 user.role = spec["role"]
@@ -102,9 +89,92 @@ def init_db(app):
                     user.password_hash = generate_password_hash(spec["password"])
         elif user is not None and check_password_hash(user.password_hash, spec["password"]):
             user.password_hash = generate_password_hash(secrets.token_hex(32))
-    if demo and db.session.get(Setting, "sample_rules_seeded") is None:
-        seed_sample_rules(app.config)
-        db.session.add(Setting(key="sample_rules_seeded", value="1"))
+
+
+def column_names(table):
+    return {c["name"] for c in inspect(db.engine).get_columns(table)}
+
+
+def init_db(app):
+    cfg = app.config
+    demo_org = cfg["DEMO_ORG_ID"]
+    postgres = db.engine.dialect.name == "postgresql"
+
+    def ddl(statement, **params):
+        db.session.execute(sql_text(statement), params)
+        db.session.commit()
+
+    for table in ("issue_counters", "insights"):
+        if inspect(db.engine).has_table(table) and "org_id" not in column_names(table):
+            ddl(f"DROP TABLE {table}")
+    db.create_all()
+    for table in ("guidelines", "default_rules"):
+        if "replacement" not in column_names(table):
+            ddl(f"ALTER TABLE {table} ADD COLUMN replacement VARCHAR(200)")
+    if "alerts_seen_at" not in column_names("users"):
+        ddl("ALTER TABLE users ADD COLUMN alerts_seen_at TIMESTAMP")
+    added = [t for t in ("users", "guidelines", "brand_settings", "submissions") if "org_id" not in column_names(t)]
+    for table in added:
+        ddl(f"ALTER TABLE {table} ADD COLUMN org_id INTEGER REFERENCES organizations (id)")
+    if db.session.get(Organization, demo_org) is None:
+        db.session.add(Organization(id=demo_org, name=cfg["DEMO_ORG_NAME"], created_by="system"))
+        db.session.commit()
+    for table in ("users", "guidelines", "brand_settings", "submissions"):
+        ddl(f"UPDATE {table} SET org_id = :org WHERE org_id IS NULL", org=demo_org)
+    if postgres:
+        for table in ("organizations", "users", "guidelines", "default_rules", "brand_settings", "submissions", "alerts"):
+            seq = db.session.execute(sql_text("SELECT pg_get_serial_sequence(:t, 'id')"), {"t": table}).scalar()
+            if seq:
+                top = db.session.execute(sql_text(f"SELECT COALESCE(MAX(id), 0) FROM {table}")).scalar()
+                last, called = db.session.execute(sql_text(f"SELECT last_value, is_called FROM {seq}")).one()
+                if top >= (last + 1 if called else last):
+                    db.session.execute(sql_text("SELECT setval(:seq, :top)"), {"seq": seq, "top": top})
+                db.session.commit()
+        for table in added:
+            ddl(f"ALTER TABLE {table} ALTER COLUMN org_id SET NOT NULL")
+        for uc in inspect(db.engine).get_unique_constraints("users"):
+            if uc["column_names"] == ["username"]:
+                ddl(f'ALTER TABLE users DROP CONSTRAINT "{uc["name"]}"')
+        for ix in inspect(db.engine).get_indexes("users"):
+            if ix.get("unique") and ix["column_names"] == ["username"]:
+                ddl(f'DROP INDEX IF EXISTS "{ix["name"]}"')
+    ddl("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_org_username ON users (org_id, lower(username))")
+    if "brand_settings" in added:
+        ddl("CREATE UNIQUE INDEX IF NOT EXISTS brand_settings_org_id_key ON brand_settings (org_id)")
+    for table in added:
+        if table != "brand_settings":
+            ddl(f"CREATE INDEX IF NOT EXISTS ix_{table}_org_id ON {table} (org_id)")
+    wanted = {(entry[0], entry[1]) for entry in cfg["DEFAULT_RULES"]}
+    for row in DefaultRule.query.all():
+        if (row.kind, row.text) not in wanted:
+            db.session.delete(row)
+    for entry in cfg["DEFAULT_RULES"]:
+        kind, text = entry[0], entry[1]
+        repl = entry[2] if len(entry) > 2 else None
+        row = DefaultRule.query.filter_by(kind=kind, text=text).first()
+        if row is None:
+            db.session.add(DefaultRule(kind=kind, text=text, replacement=repl))
+        else:
+            row.replacement = repl
+    marker = f"sample_rules_seeded:{demo_org}"
+    legacy_marker = db.session.get(Setting, "sample_rules_seeded")
+    if legacy_marker is not None:
+        if db.session.get(Setting, marker) is None:
+            db.session.add(Setting(key=marker, value=legacy_marker.value))
+        db.session.delete(legacy_marker)
+    demo = cfg["DEMO_MODE"]
+    db.session.flush()
+    brand = BrandSettings.query.filter_by(org_id=demo_org).first()
+    if brand is None:
+        brand = BrandSettings(org_id=demo_org, colors_json="[]", tolerance="Normal")
+        db.session.add(brand)
+    if demo and not brand.colors:
+        brand.colors_json = json.dumps(sorted(cfg["SAMPLE_BRAND_COLORS"]))
+        brand.tolerance = cfg["SAMPLE_BRAND_TOLERANCE"]
+    ensure_demo_accounts(cfg)
+    if demo and db.session.get(Setting, marker) is None:
+        seed_sample_rules(cfg, demo_org)
+        db.session.add(Setting(key=marker, value="1"))
     insights.merge_duplicates()
     db.session.commit()
 
@@ -133,13 +203,23 @@ def register(app):
         return [v for v in value if isinstance(v, str)] if isinstance(value, list) else []
 
     def user_dict(u):
-        return {"username": u.username, "role": u.role, "is_authorized": u.is_authorized} if u else None
+        if not u:
+            return None
+        return {"username": u.username, "role": u.role, "is_authorized": u.is_authorized, "is_admin": u.is_admin,
+                "org_id": u.org_id, "org_name": u.org.name}
 
     def page(template, status=200, **ctx):
         ctx["user"] = user_dict(g.user)
         ctx["csrf_token"] = session.get("csrf")
         ctx["demo_mode"] = cfg["DEMO_MODE"]
+        ctx["demo_org_id"] = cfg["DEMO_ORG_ID"]
         ctx["messages"] = [{"category": c, "text": t} for c, t in get_flashed_messages(with_categories=True)]
+        if g.user:
+            seen = g.user.alerts_seen_at
+            rows = Alert.query.filter_by(user_id=g.user.id).order_by(Alert.id.desc()).limit(cfg["ALERTS_SHOWN"]).all()
+            ctx["alerts"] = [{"message": a.message, "created_at": iso(a.created_at), "unseen": seen is None or a.created_at > seen}
+                             for a in rows]
+            ctx["unseen_alerts"] = sum(1 for a in ctx["alerts"] if a["unseen"])
         if wants_json():
             return jsonify(ctx), status
         try:
@@ -174,6 +254,15 @@ def register(app):
         def wrapper(*a, **kw):
             if not g.user.is_authorized:
                 return fail("Only Authorized users can do this.", 403)
+            return fn(*a, **kw)
+        return wrapper
+
+    def admin_required(fn):
+        @wraps(fn)
+        @login_required
+        def wrapper(*a, **kw):
+            if not g.user.is_admin:
+                return fail("Only the organization's Admin can do this.", 403, "dashboard")
             return fn(*a, **kw)
         return wrapper
 
@@ -214,72 +303,204 @@ def register(app):
 
     @app.route("/")
     def index():
-        return redirect(url_for("dashboard" if g.user else "login"))
+        if g.user:
+            return redirect(url_for("dashboard"))
+        if cfg["DEMO_MODE"]:
+            return page("demo.html", demo_accounts=demo_account_specs(cfg))
+        return page("login.html", demo_available=False)
+
+    @app.route("/demo")
+    def demo_page():
+        if g.user:
+            return redirect(url_for("dashboard"))
+        if not cfg["DEMO_MODE"]:
+            return redirect(url_for("login"))
+        return page("demo.html", demo_accounts=demo_account_specs(cfg))
 
     failed_logins = {}
 
-    def login_lock_seconds(name):
-        if cfg["DEMO_MODE"] and name in {s["username"].lower() for s in demo_account_specs(cfg)}:
+    def login_lock_seconds(key):
+        org_id, name = key
+        if cfg["DEMO_MODE"] and org_id == cfg["DEMO_ORG_ID"] and name in {s["username"].lower() for s in demo_account_specs(cfg)}:
             return 0
         now = time.time()
-        recent = [t for t in failed_logins.get(name, []) if now - t < cfg["LOGIN_LOCK_SECONDS"]]
+        recent = [t for t in failed_logins.get(key, []) if now - t < cfg["LOGIN_LOCK_SECONDS"]]
         if recent:
-            failed_logins[name] = recent
+            failed_logins[key] = recent
         else:
-            failed_logins.pop(name, None)
+            failed_logins.pop(key, None)
         if len(recent) >= cfg["LOGIN_MAX_FAILURES"]:
             return max(1, math.ceil(cfg["LOGIN_LOCK_SECONDS"] - (now - recent[0])))
         return 0
 
-    def start_session(user):
+    def start_session(user, message=None, **extra):
         session.clear()
         session["user_id"] = user.id
         session["csrf"] = secrets.token_hex(16)
-        return redirect(url_for("dashboard")) if not wants_json() else jsonify({"ok": True, "redirect": url_for("dashboard")})
+        if message:
+            flash(message, "success")
+        if wants_json():
+            return jsonify({"ok": True, "redirect": url_for("dashboard"), **({"message": message} if message else {}), **extra})
+        return redirect(url_for("dashboard"))
 
     @app.route("/login", methods=["GET", "POST"])
     def login():
         if request.method == "GET":
-            return page("login.html", demo_accounts=demo_account_specs(cfg) if cfg["DEMO_MODE"] else [])
-        name, password = field("username").strip(), field("password")
-        key = name.lower()
-        wait = login_lock_seconds(key) if name else 0
+            return page("login.html", demo_available=cfg["DEMO_MODE"])
+        raw_org, name, password = field("org_id").strip(), field("username").strip(), field("password")
+        org_id = int(raw_org) if raw_org.isdigit() and len(raw_org) <= 9 else None
+        key = (org_id, name.lower())
+        wait = login_lock_seconds(key) if name and org_id else 0
         if wait:
             minutes = math.ceil(wait / 60)
             return fail(f"Too many wrong passwords for this username. Please wait {minutes} minute(s) and try again.", 429, "login")
-        user = User.query.filter(func.lower(User.username) == key).first() if name else None
+        user = None
+        if name and org_id:
+            user = User.query.filter(User.org_id == org_id, func.lower(User.username) == name.lower()).first()
         if not user or not check_password_hash(user.password_hash, password):
-            if name:
+            if name and org_id:
                 if len(failed_logins) > 1000:
                     failed_logins.clear()
                 failed_logins.setdefault(key, []).append(time.time())
-            return fail("Incorrect username or password. Please try again.", 401, "login")
+            return fail("Incorrect organization ID, username or password. Please try again.", 401, "login")
         failed_logins.pop(key, None)
         return start_session(user)
 
     @app.route("/demo-login/<key>", methods=["POST"])
     def demo_login(key):
         spec = next((s for s in demo_account_specs(cfg) if s["key"] == key), None) if cfg["DEMO_MODE"] else None
-        user = User.query.filter(func.lower(User.username) == spec["username"].lower()).first() if spec else None
+        user = None
+        if spec:
+            user = User.query.filter(User.org_id == cfg["DEMO_ORG_ID"], func.lower(User.username) == spec["username"].lower()).first()
         if user is None:
             return fail("Demo mode is not available.", 404, "login")
         return start_session(user)
 
-    @app.route("/signup", methods=["GET", "POST"])
-    def signup():
+    @app.route("/organizations/new", methods=["GET", "POST"])
+    def org_new():
+        if g.user:
+            return redirect(url_for("dashboard"))
         if request.method == "GET":
-            return page("signup.html")
-        name, password = field("username").strip(), field("password")
-        if not USERNAME_RE.match(name):
-            return fail("Username must be 3 to 30 characters: letters, numbers, dot, dash or underscore.", 400, "signup")
+            return page("org_new.html")
+        name = " ".join(field("org_name").split())
+        username, password, confirm = field("username").strip(), field("password"), field("confirm_password")
+        if not cfg["MIN_ORG_NAME_CHARS"] <= len(name) <= cfg["MAX_ORG_NAME_CHARS"]:
+            return fail(f"The organization name must be {cfg['MIN_ORG_NAME_CHARS']} to {cfg['MAX_ORG_NAME_CHARS']} characters.", 400, "org_new")
+        if not USERNAME_RE.match(username):
+            return fail("Username must be 3 to 30 characters: letters, numbers, dot, dash or underscore.", 400, "org_new")
         if len(password) < cfg["MIN_PASSWORD_LENGTH"]:
-            return fail(f"Password must be at least {cfg['MIN_PASSWORD_LENGTH']} characters.", 400, "signup")
-        if User.query.filter(func.lower(User.username) == name.lower()).first():
-            return fail("That username is already taken.", 409, "signup")
-        user = User(username=name, role="Member", password_hash=generate_password_hash(password))
+            return fail(f"Password must be at least {cfg['MIN_PASSWORD_LENGTH']} characters.", 400, "org_new")
+        if password != confirm:
+            return fail("The two passwords do not match.", 400, "org_new")
+        org = Organization(name=name, created_by=username)
+        db.session.add(org)
+        db.session.flush()
+        user = User(org_id=org.id, username=username, role="Admin", password_hash=generate_password_hash(password))
         db.session.add(user)
+        db.session.add(BrandSettings(org_id=org.id, colors_json="[]", tolerance="Normal"))
+        seed_sample_rules(cfg, org.id)
         db.session.commit()
-        return start_session(user)
+        return start_session(
+            user, f"Organization created. Your organization ID is {org.id}. You need it, with your username, to log in.",
+            organization_id=org.id)
+
+    def notify(user, kind, message):
+        db.session.add(Alert(org_id=user.org_id, user_id=user.id, kind=kind, message=message[:400]))
+        db.session.flush()
+        for stale in Alert.query.filter_by(user_id=user.id).order_by(Alert.id.desc()).offset(cfg["ALERTS_KEPT"]).all():
+            db.session.delete(stale)
+
+    @app.route("/alerts/seen", methods=["POST"])
+    @login_required
+    def alerts_seen():
+        g.user.alerts_seen_at = utcnow()
+        db.session.commit()
+        return jsonify({"ok": True})
+
+    def protected_account(u):
+        return (cfg["DEMO_MODE"] and u.org_id == cfg["DEMO_ORG_ID"]
+                and u.username.lower() in {s["username"].lower() for s in demo_account_specs(cfg)})
+
+    def managed_member(user_id):
+        target = User.query.filter_by(id=user_id, org_id=g.user.org_id).first()
+        if target is None:
+            return None, fail("Member not found.", 404, "members_page")
+        if target.role == "Admin" or target.id == g.user.id:
+            return None, fail("The Admin account cannot be changed or removed.", 400, "members_page")
+        if protected_account(target):
+            return None, fail("This is a built-in demo account and cannot be changed or removed.", 400, "members_page")
+        return target, None
+
+    @app.route("/members")
+    @admin_required
+    def members_page():
+        users = User.query.filter_by(org_id=g.user.org_id).all()
+        order = {"Admin": 0, "Authorized": 1, "Member": 2}
+        users.sort(key=lambda u: (order.get(u.role, 3), u.username.lower()))
+        return page(
+            "members.html", org={"id": g.user.org_id, "name": g.user.org.name}, max_message_chars=cfg["MAX_MESSAGE_CHARS"],
+            members=[{"id": u.id, "username": u.username, "role": u.role, "created_at": iso(u.created_at),
+                      "is_self": u.id == g.user.id, "protected": protected_account(u),
+                      "can_manage": u.role != "Admin" and u.id != g.user.id and not protected_account(u)} for u in users])
+
+    @app.route("/members/add", methods=["POST"])
+    @admin_required
+    def member_add():
+        username, password = field("username").strip(), field("password")
+        if not USERNAME_RE.match(username):
+            return fail("Username must be 3 to 30 characters: letters, numbers, dot, dash or underscore.", 400, "members_page")
+        if len(password) < cfg["MIN_PASSWORD_LENGTH"]:
+            return fail(f"Password must be at least {cfg['MIN_PASSWORD_LENGTH']} characters.", 400, "members_page")
+        if User.query.filter(User.org_id == g.user.org_id, func.lower(User.username) == username.lower()).first():
+            return fail("That username is already taken in this organization.", 409, "members_page")
+        db.session.add(User(org_id=g.user.org_id, username=username, role="Member", password_hash=generate_password_hash(password)))
+        db.session.commit()
+        return done(f"Member added. They log in with organization ID {g.user.org_id}, the username and the password you set.", "members_page")
+
+    @app.route("/members/<int:user_id>/role", methods=["POST"])
+    @admin_required
+    def member_role(user_id):
+        target, err = managed_member(user_id)
+        if err:
+            return err
+        role = field("role")
+        if role not in ("Authorized", "Member"):
+            return fail("Choose Authorized or Member.", 400, "members_page")
+        if target.role == role:
+            return done(f"{target.username} is already {role}.", "members_page")
+        target.role = role
+        notify(target, "role", f"Your role was changed to {role} by {g.user.username}.")
+        db.session.commit()
+        return done(f"{target.username} is now {role}.", "members_page")
+
+    @app.route("/members/<int:user_id>/remove", methods=["POST"])
+    @admin_required
+    def member_remove(user_id):
+        target, err = managed_member(user_id)
+        if err:
+            return err
+        name = target.username
+        Alert.query.filter_by(user_id=target.id).delete()
+        Submission.query.filter_by(user_id=target.id).delete()
+        db.session.delete(target)
+        db.session.commit()
+        return done(f"{name} was removed. Their requests were removed with the account.", "members_page")
+
+    @app.route("/members/message", methods=["POST"])
+    @admin_required
+    def member_message():
+        text = " ".join(field("message").split())
+        if not text:
+            return fail("Write a message first.", 400, "members_page")
+        if len(text) > cfg["MAX_MESSAGE_CHARS"]:
+            return fail(f"Messages are limited to {cfg['MAX_MESSAGE_CHARS']} characters.", 400, "members_page")
+        recipients = User.query.filter(User.org_id == g.user.org_id, User.id != g.user.id).all()
+        if not recipients:
+            return fail("There is nobody else in this organization yet.", 400, "members_page")
+        for u in recipients:
+            notify(u, "message", f"Message from {g.user.username}: {text}")
+        db.session.commit()
+        return done(f"Message sent to {len(recipients)} member(s).", "members_page")
 
     @app.route("/logout", methods=["GET", "POST"])
     def logout():
@@ -289,23 +510,29 @@ def register(app):
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return page("dashboard.html", insights=insights.get_insights(cfg["INSIGHT_LIMIT"], cfg["INSIGHT_THRESHOLD"]))
+        return page("dashboard.html", insights=insights.get_insights(g.user.org_id, cfg["INSIGHT_LIMIT"], cfg["INSIGHT_THRESHOLD"]))
 
     @app.route("/demo/reset", methods=["POST"])
     @authorized_required
     def demo_reset():
-        if not cfg["DEMO_MODE"]:
+        org_id = cfg["DEMO_ORG_ID"]
+        if not cfg["DEMO_MODE"] or g.user.org_id != org_id:
             return fail("Demo mode is not on.", 404, "dashboard")
-        for model in (Submission, Guideline, IssueCounter, Insight):
-            model.query.delete()
+        for model in (Alert, Submission, Guideline, IssueCounter, Insight):
+            model.query.filter_by(org_id=org_id).delete()
+        keep = {s["username"].lower() for s in demo_account_specs(cfg)} | {g.user.username.lower()}
+        for u in User.query.filter_by(org_id=org_id).all():
+            if u.username.lower() not in keep:
+                db.session.delete(u)
         db.session.flush()
-        seed_sample_rules(cfg)
-        brand = db.session.get(BrandSettings, 1)
+        ensure_demo_accounts(cfg)
+        seed_sample_rules(cfg, org_id)
+        brand = brand_for(org_id)
         brand.colors_json = json.dumps(sorted(cfg["SAMPLE_BRAND_COLORS"]))
         brand.tolerance = cfg["SAMPLE_BRAND_TOLERANCE"]
         brand.logo_blob, brand.logo_name = None, None
         db.session.commit()
-        return done("Demo data reset. The sample rules and colors are back.", "dashboard")
+        return done("Demo data reset. The sample rules, colors and demo accounts are back.", "dashboard")
 
     def rule_dict(r, editable):
         effective = (r.replacement or cfg["DEFAULT_REPLACEMENT"]) if r.kind == "must_not_use" else None
@@ -315,11 +542,11 @@ def register(app):
     @app.route("/guidelines")
     @login_required
     def guidelines():
-        brand = db.session.get(BrandSettings, 1)
+        brand = brand_for(g.user.org_id)
         return page(
             "guidelines.html", can_edit=g.user.is_authorized,
             rule_types=[{"value": k, "label": v} for k, v in cfg["RULE_KINDS"].items()],
-            rules=[rule_dict(r, True) for r in Guideline.query.order_by(Guideline.id)],
+            rules=[rule_dict(r, True) for r in Guideline.query.filter_by(org_id=g.user.org_id).order_by(Guideline.id)],
             default_rules=[rule_dict(r, False) for r in DefaultRule.query.order_by(DefaultRule.id)],
             colors=brand.colors, tolerance=brand.tolerance, tolerance_options=list(cfg["COLOR_TOLERANCES"]),
             default_replacement=cfg["DEFAULT_REPLACEMENT"], max_colors=cfg["MAX_COLORS"], has_logo=bool(brand.logo_blob), logo_name=brand.logo_name,
@@ -340,22 +567,22 @@ def register(app):
             return fail(f"The replacement is limited to {cfg['MAX_RULE_CHARS']} characters.", 400, "guidelines")
         if replacement and checks.phrase_pattern(text).search(replacement):
             return fail("The replacement cannot contain the banned word itself.", 400, "guidelines")
-        same = lambda model: model.query.filter(model.kind == kind, func.lower(model.text) == text.lower()).first()
-        if same(DefaultRule):
+        if DefaultRule.query.filter(DefaultRule.kind == kind, func.lower(DefaultRule.text) == text.lower()).first():
             return fail("That rule is already a built-in default rule.", 409, "guidelines")
-        if same(Guideline):
+        if Guideline.query.filter(Guideline.org_id == g.user.org_id, Guideline.kind == kind,
+                                  func.lower(Guideline.text) == text.lower()).first():
             return fail("That rule already exists.", 409, "guidelines")
-        conflict = checks.rule_conflict(kind, text, replacement, active_rules())
+        conflict = checks.rule_conflict(kind, text, replacement, active_rules(g.user.org_id))
         if conflict:
             return fail(conflict + " Change one of the rules first.", 409, "guidelines")
-        db.session.add(Guideline(kind=kind, text=text, replacement=replacement or None, created_by=g.user.username))
+        db.session.add(Guideline(org_id=g.user.org_id, kind=kind, text=text, replacement=replacement or None, created_by=g.user.username))
         db.session.commit()
         return done("Rule added.", "guidelines")
 
     @app.route("/guidelines/rules/<int:rule_id>/delete", methods=["POST"])
     @guidelines_editor
     def delete_rule(rule_id):
-        rule = db.session.get(Guideline, rule_id)
+        rule = Guideline.query.filter_by(id=rule_id, org_id=g.user.org_id).first()
         if rule is None:
             return fail("Rule not found.", 404, "guidelines")
         db.session.delete(rule)
@@ -365,7 +592,7 @@ def register(app):
     @app.route("/guidelines/brand", methods=["POST"])
     @guidelines_editor
     def save_brand():
-        brand = db.session.get(BrandSettings, 1)
+        brand = brand_for(g.user.org_id)
         colors = [c.strip() for c in field_list("colors") if c.strip()]
         if not 1 <= len(colors) <= cfg["MAX_COLORS"]:
             return fail(f"Enter 1 to {cfg['MAX_COLORS']} brand colors.", 400, "guidelines")
@@ -392,15 +619,16 @@ def register(app):
     @app.route("/guidelines/logo")
     @login_required
     def logo_image():
-        brand = db.session.get(BrandSettings, 1)
+        brand = brand_for(g.user.org_id)
         if not brand.logo_blob:
             abort(404)
         return send_file(io.BytesIO(brand.logo_blob), mimetype="image/png")
 
-    def active_rules():
+    def active_rules(org_id):
         seen, out = set(), []
-        for model in (DefaultRule, Guideline):
-            for r in model.query.order_by(model.id):
+        for model, scope in ((DefaultRule, None), (Guideline, org_id)):
+            query = model.query if scope is None else model.query.filter_by(org_id=scope)
+            for r in query.order_by(model.id):
                 k = (r.kind, r.text.lower())
                 if k not in seen:
                     seen.add(k)
@@ -459,10 +687,10 @@ def register(app):
 
         Submission.query.filter(Submission.status == "Draft",
                                 Submission.created_at < utcnow() - timedelta(minutes=cfg["DRAFT_TTL_MINUTES"])).delete()
-        brand = db.session.get(BrandSettings, 1)
+        brand = brand_for(g.user.org_id)
         try:
             result = checks.run_pipeline(
-                input_type=input_type, text=text, pdf_bytes=pdf_bytes, image_bytes=image_bytes, rules=active_rules(),
+                input_type=input_type, text=text, pdf_bytes=pdf_bytes, image_bytes=image_bytes, rules=active_rules(g.user.org_id),
                 brand={"colors": brand.colors, "tolerance": brand.tolerance, "logo": brand.logo_blob},
                 judge=cfg.get("LLM_JUDGE") or default_judge, cfg=cfg)
         except checks.ContentError as exc:
@@ -474,7 +702,7 @@ def register(app):
                "issues": [checks.public_issue(i) for i in issues],
                "can_apply_immediately": g.user.is_authorized, "submission_id": None}
         if issues:
-            sub = Submission(user_id=g.user.id, username=g.user.username, input_type=input_type, status="Draft",
+            sub = Submission(org_id=g.user.org_id, user_id=g.user.id, username=g.user.username, input_type=input_type, status="Draft",
                              issues_json=json.dumps(issues), corrected_text=result["corrected_text"],
                              output_blob=result["output"], output_name=result["output_name"],
                              output_mimetype=result["mimetype"])
@@ -498,9 +726,9 @@ def register(app):
     def resolve(sub, status):
         sub.status, sub.resolved_at, sub.resolved_by = status, utcnow(), g.user.username
         if status == "Approved":
-            insights.record_approved(sub.issues, cfg["INSIGHT_THRESHOLD"])
+            insights.record_approved(sub.org_id, sub.issues, cfg["INSIGHT_THRESHOLD"])
         db.session.flush()
-        old = Submission.query.filter(Submission.status.in_(("Approved", "Rejected"))) \
+        old = Submission.query.filter(Submission.org_id == sub.org_id, Submission.status.in_(("Approved", "Rejected"))) \
             .order_by(Submission.resolved_at.desc(), Submission.id.desc()).offset(cfg["HISTORY_LIMIT"]).all()
         for o in old:
             db.session.delete(o)
@@ -545,8 +773,8 @@ def register(app):
     @app.route("/requests")
     @login_required
     def requests_page():
-        pending_q = Submission.query.filter_by(status="Pending")
-        history_q = Submission.query.filter(Submission.status.in_(("Approved", "Rejected")))
+        pending_q = Submission.query.filter_by(status="Pending", org_id=g.user.org_id)
+        history_q = Submission.query.filter(Submission.org_id == g.user.org_id, Submission.status.in_(("Approved", "Rejected")))
         if not g.user.is_authorized:
             pending_q = pending_q.filter_by(user_id=g.user.id)
             history_q = history_q.filter_by(user_id=g.user.id)
@@ -556,10 +784,15 @@ def register(app):
                     pending=[sub_dict(s) for s in pending], history=[sub_dict(s) for s in history])
 
     def decide(sub_id, status):
-        sub = db.session.get(Submission, sub_id)
+        sub = Submission.query.filter_by(id=sub_id, org_id=g.user.org_id).first()
         if sub is None or sub.status != "Pending":
             return fail("This request is no longer pending.", 404, "requests_page")
+        uploader = db.session.get(User, sub.user_id)
+        label = {"pdf": "PDF", "image": "Image"}.get(sub.input_type, "Text")
         resolve(sub, status)
+        if uploader is not None and uploader.id != g.user.id:
+            notify(uploader, "request", f"Your {label} request was {status.lower()} by {g.user.username}.")
+            db.session.commit()
         return done(f"Request {status.lower()}.", "requests_page", status=status)
 
     @app.route("/requests/<int:sub_id>/approve", methods=["POST"])
@@ -575,7 +808,7 @@ def register(app):
     @app.route("/download/<int:sub_id>")
     @login_required
     def download(sub_id):
-        sub = db.session.get(Submission, sub_id)
+        sub = Submission.query.filter_by(id=sub_id, org_id=g.user.org_id).first()
         if sub is None or sub.status != "Approved" or not sub.output_blob:
             return fail("Nothing to download.", 404)
         if not g.user.is_authorized and sub.user_id != g.user.id:

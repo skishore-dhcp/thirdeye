@@ -51,6 +51,11 @@ class Config:
     INSIGHT_LIMIT = 5
     DRAFT_TTL_MINUTES = 60
     MIN_PASSWORD_LENGTH = 6
+    ALERTS_KEPT = 50
+    ALERTS_SHOWN = 10
+    MAX_MESSAGE_CHARS = 300
+    MIN_ORG_NAME_CHARS = 2
+    MAX_ORG_NAME_CHARS = 60
 
     VISUAL_MAX_PAGES = 5
     LOGO_MATCH_THRESHOLD = 0.65
@@ -62,6 +67,10 @@ class Config:
     DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD") or "demo"
     DEMO_MEMBER_USERNAME = os.environ.get("DEMO_MEMBER_USERNAME") or "demo-member"
     DEMO_MEMBER_PASSWORD = os.environ.get("DEMO_MEMBER_PASSWORD") or "demo"
+    DEMO_ADMIN_USERNAME = os.environ.get("DEMO_ADMIN_USERNAME") or "demo-admin"
+    DEMO_ADMIN_PASSWORD = os.environ.get("DEMO_ADMIN_PASSWORD") or "demo"
+    DEMO_ORG_ID = 1
+    DEMO_ORG_NAME = "Demo Organization"
     SAMPLE_BRAND_COLORS = ["#0033A0", "#F2A900"]
     SAMPLE_BRAND_TOLERANCE = "Normal"
 

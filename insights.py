@@ -34,23 +34,23 @@ def tip_for(issue_type, label):
     return TIPS[issue_type]
 
 
-def record_approved(issues, threshold):
+def record_approved(org_id, issues, threshold):
     seen = set()
     for issue in issues:
         key = normalize_key(issue["key"])
         if key in seen:
             continue
         seen.add(key)
-        counter = db.session.get(IssueCounter, key)
+        counter = db.session.get(IssueCounter, (org_id, key))
         if counter is None:
-            counter = IssueCounter(issue_key=key, label=issue["label"], issue_type=issue["type"], count=0)
+            counter = IssueCounter(org_id=org_id, issue_key=key, label=issue["label"], issue_type=issue["type"], count=0)
             db.session.add(counter)
         counter.count += 1
         if counter.count >= threshold:
             counter.count = 0
-            insight = db.session.get(Insight, key)
+            insight = db.session.get(Insight, (org_id, key))
             if insight is None:
-                insight = Insight(issue_key=key, label=issue["label"], issue_type=issue["type"], times_triggered=0)
+                insight = Insight(org_id=org_id, issue_key=key, label=issue["label"], issue_type=issue["type"], times_triggered=0)
                 db.session.add(insight)
             insight.times_triggered += 1
             insight.last_triggered = utcnow()
@@ -60,12 +60,12 @@ def merge_duplicates():
     for model, fields in ((IssueCounter, ("count",)), (Insight, ("times_triggered",))):
         groups = {}
         for row in model.query.all():
-            groups.setdefault(normalize_key(row.issue_key), []).append(row)
-        for key, rows in groups.items():
+            groups.setdefault((row.org_id, normalize_key(row.issue_key)), []).append(row)
+        for (org_id, key), rows in groups.items():
             if len(rows) == 1 and rows[0].issue_key == key:
                 continue
             newest = max(rows, key=lambda r: getattr(r, "last_triggered", None) or datetime.min)
-            merged = dict(issue_key=key, label=newest.label, issue_type=newest.issue_type)
+            merged = dict(org_id=org_id, issue_key=key, label=newest.label, issue_type=newest.issue_type)
             for f in fields:
                 merged[f] = sum(getattr(r, f) or 0 for r in rows)
             if model is Insight:
@@ -76,9 +76,9 @@ def merge_duplicates():
             db.session.add(model(**merged))
 
 
-def get_insights(limit, threshold):
+def get_insights(org_id, limit, threshold):
     grouped = {}
-    for r in Insight.query.order_by(Insight.last_triggered.desc()).all():
+    for r in Insight.query.filter_by(org_id=org_id).order_by(Insight.last_triggered.desc()).all():
         key = normalize_key(r.issue_key)
         if key in grouped:
             grouped[key]["times"] += r.times_triggered

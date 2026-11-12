@@ -14,26 +14,56 @@ def iso(dt):
     return dt.isoformat() + "Z" if dt else None
 
 
+class Organization(db.Model):
+    __tablename__ = "organizations"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    created_by = db.Column(db.String(40))
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(40), unique=True, nullable=False)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, index=True)
+    username = db.Column(db.String(40), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), nullable=False, default="Member")
     created_at = db.Column(db.DateTime, default=utcnow)
+    alerts_seen_at = db.Column(db.DateTime)
+
+    org = db.relationship("Organization")
+
+    @property
+    def is_admin(self):
+        return self.role == "Admin"
 
     @property
     def is_authorized(self):
-        return self.role == "Authorized"
+        return self.role in ("Authorized", "Admin")
+
+
+db.Index("ix_users_org_username", User.org_id, db.func.lower(User.username), unique=True)
 
 
 class Guideline(db.Model):
     __tablename__ = "guidelines"
     id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, index=True)
     kind = db.Column(db.String(20), nullable=False)
     text = db.Column(db.String(200), nullable=False)
     replacement = db.Column(db.String(200))
     created_by = db.Column(db.String(40))
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class Alert(db.Model):
+    __tablename__ = "alerts"
+    id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False)
+    message = db.Column(db.String(400), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
@@ -55,6 +85,7 @@ class DefaultRule(db.Model):
 class BrandSettings(db.Model):
     __tablename__ = "brand_settings"
     id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, unique=True)
     colors_json = db.Column(db.Text, default="[]")
     tolerance = db.Column(db.String(10), default="Normal")
     logo_blob = db.Column(db.LargeBinary)
@@ -68,6 +99,7 @@ class BrandSettings(db.Model):
 class Submission(db.Model):
     __tablename__ = "submissions"
     id = db.Column(db.Integer, primary_key=True)
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     username = db.Column(db.String(40), nullable=False)
     input_type = db.Column(db.String(10), nullable=False)
@@ -88,6 +120,7 @@ class Submission(db.Model):
 
 class IssueCounter(db.Model):
     __tablename__ = "issue_counters"
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), primary_key=True)
     issue_key = db.Column(db.String(300), primary_key=True)
     label = db.Column(db.String(300), nullable=False)
     issue_type = db.Column(db.String(20), nullable=False)
@@ -96,6 +129,7 @@ class IssueCounter(db.Model):
 
 class Insight(db.Model):
     __tablename__ = "insights"
+    org_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), primary_key=True)
     issue_key = db.Column(db.String(300), primary_key=True)
     label = db.Column(db.String(300), nullable=False)
     issue_type = db.Column(db.String(20), nullable=False)
