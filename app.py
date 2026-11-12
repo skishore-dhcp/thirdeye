@@ -224,11 +224,12 @@ def register(app):
         ctx["csrf_token"] = session.get("csrf")
         ctx["demo_mode"] = cfg["DEMO_MODE"]
         ctx["demo_org_id"] = cfg["DEMO_ORG_ID"]
+        ctx["docs_url"] = cfg["DOCS_URL"]
         ctx["messages"] = [{"category": c, "text": t} for c, t in get_flashed_messages(with_categories=True)]
         if g.user:
             seen = g.user.alerts_seen_at
             rows = Alert.query.filter_by(user_id=g.user.id).order_by(Alert.id.desc()).limit(cfg["ALERTS_SHOWN"]).all()
-            ctx["alerts"] = [{"message": a.message, "created_at": iso(a.created_at), "unseen": seen is None or a.created_at > seen}
+            ctx["alerts"] = [{"message": a.message, "kind": a.kind, "created_at": iso(a.created_at), "unseen": seen is None or a.created_at > seen}
                              for a in rows]
             ctx["unseen_alerts"] = sum(1 for a in ctx["alerts"] if a["unseen"])
         if wants_json():
@@ -413,6 +414,9 @@ def register(app):
         user = User(org_id=org.id, username=username, role="Admin", password_hash=generate_password_hash(password))
         db.session.add(user)
         db.session.add(BrandSettings(org_id=org.id, colors_json="[]", tolerance="Normal"))
+        db.session.flush()
+        notify(user, "welcome", "Welcome to ThirdEye! We hope you and your organization enjoy your experience with us. "
+                                "To utilize ThirdEye to its fullest, click here to view our documentation:")
         seed_sample_rules(cfg, org.id)
         db.session.commit()
         return start_session(
@@ -875,7 +879,7 @@ def register(app):
     def profile():
         stats.expire_drafts(cfg["DRAFT_TTL_MINUTES"], g.user.org_id)
         return page("profile.html", me={"username": g.user.username, "role": g.user.role, "org_id": g.user.org_id,
-                                        "org_name": g.user.org.name, "created_at": iso(g.user.created_at)},
+                                        "org_name": g.user.org.name},
                     counts=stats.user_counts(g.user), can_change_password=not protected_account(g.user),
                     min_password=cfg["MIN_PASSWORD_LENGTH"])
 

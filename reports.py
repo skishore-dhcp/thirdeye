@@ -417,7 +417,7 @@ def org_charts(summary, full, half):
                        "Approvals versus rejections"),
         "usage": svg_bars(summary["usage"], half, "Most used content types", SAGE),
         "issues": svg_bars(summary["top_issues"], full, "Most common issues", LINK, "No issues recorded yet"),
-        "revised": svg_bars(summary["revised"], half, "Most revised content types", CLAY, "No approved corrections yet"),
+        "revised": svg_bars(summary["revised"], full, "Most revised content types", CLAY, "No approved corrections yet"),
         "activity": svg_line(summary["activity"], full, "Checks per day"),
     }
 
