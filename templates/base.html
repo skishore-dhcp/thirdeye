@@ -20,34 +20,40 @@
     {% if user %}
     <div class="userbox">
       <span class="muted small" title="Organization">{{ user.org_name }} &middot; ID {{ user.org_id }}</span>
+      <span class="bar-sep" aria-hidden="true"></span>
       <span class="username">{{ user.username }}</span>
       <span class="role role-{{ user.role|lower }}">{{ user.role }}</span>
-      <details class="menu">
-        <summary class="btn btn-small btn-on-dark" data-tour-order="2" data-tour-title="Menu" data-tour-text="Open the menu for your alerts, your profile, the organization report and to replay this tutorial.">Menu{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
-        <div class="menu-panel">
-          <details class="menu-item" id="alerts-menu" data-unseen="{{ unseen_alerts }}" data-seen-url="{{ url_for('alerts_seen') }}">
-            <summary>Alerts{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
-            <ul class="alert-list">
-              {% for a in alerts %}<li class="{{ 'unseen' if a.unseen }}">{{ a.message }}<time class="local-time" datetime="{{ a.created_at }}">{{ a.created_at[:16]|replace('T', ' ') }} UTC</time></li>
-              {% else %}<li>No alerts yet.</li>{% endfor %}
-            </ul>
-          </details>
-          <a class="menu-link" href="{{ url_for('profile') }}">Profile</a>
-          <a class="menu-link" href="{{ url_for('reports_page') }}">Organization report</a>
-          <a class="menu-link" href="{{ url_for('dashboard', tour=1) }}">Tutorial</a>
-        </div>
-      </details>
-      <a class="btn btn-small btn-on-dark" href="{{ url_for('logout') }}">Log Out</a>
+      <a class="btn btn-small btn-on-dark logout-btn" href="{{ url_for('logout') }}"><svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1 0 10.8 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>Log Out</a>
+      <button type="button" class="hamburger" id="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar" data-tour-order="2" data-tour-title="Menu" data-tour-text="Open the menu for your alerts, your profile, the organization report and to replay this tutorial."><span></span><span></span><span></span>{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</button>
     </div>
     {% endif %}
   </header>
+  {% if user %}
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Menu">
+    <div class="sidebar-head">
+      <span>Menu</span>
+      <button type="button" class="sidebar-close" id="menu-close" aria-label="Close menu">&times;</button>
+    </div>
+    <details class="menu-item" id="alerts-menu" data-unseen="{{ unseen_alerts }}" data-seen-url="{{ url_for('alerts_seen') }}">
+      <summary>Alerts{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
+      <ul class="alert-list">
+        {% for a in alerts %}<li class="{{ 'unseen' if a.unseen }}">{{ a.message }}{% if a.kind == 'welcome' %} <a href="{{ docs_url }}">Documentation</a>{% endif %}<time class="local-time" datetime="{{ a.created_at }}">{{ a.created_at[:16]|replace('T', ' ') }} UTC</time></li>
+        {% else %}<li>No alerts yet.</li>{% endfor %}
+      </ul>
+    </details>
+    <a class="menu-link" href="{{ url_for('profile') }}">Profile</a>
+    <a class="menu-link" href="{{ url_for('reports_page') }}">Organization report</a>
+    <a class="menu-link" href="{{ url_for('dashboard', tour=1) }}">Tutorial</a>
+  </aside>
+  {% endif %}
   <main>{% block main %}{% endblock %}</main>
   <footer class="site-footer">
     <div class="footer-inner">
       <div class="footer-col footer-about">
         <h2>About us</h2>
-        <p>ThirdEye helps teams keep their words, tone and visuals consistent with their brand. This is placeholder text: replace it with a short description of who we are and what we believe in.</p>
-        <p>Founded to make brand reviews quicker and fairer, we turn a team's guidelines into checks anyone can run before content goes out.</p>
+        <p>ThirdEye is a brand identity governance platform created for CodeNexus India 2026, brought to life by a one-person team. We at ThirdEye aim to assist startups and growing organizations with low capital and resources to smoothen and streamline their marketing process, especially the consistency of brand identity. Any informal email, company document with errors, or a prototype flyer - we review it all, in accordance with your brand.</p>
+        <p>We offer Cumulative Organization Reports (CORs), employee metrics, and insights to lend another hand in assisting the growth of new and existing employees alike. ThirdEye wishes you luck in your endeavor.</p>
       </div>
       <div class="footer-col">
         <h2>Quick links</h2>
@@ -66,11 +72,10 @@
         </ul>
       </div>
       <div class="footer-col">
-        <h2>Contact</h2>
+        <h2>Team Details</h2>
         <ul>
-          <li>hello@example.com</li>
-          <li>+00 000 000 0000</li>
-          <li>123 Placeholder Street, Your City</li>
+          <li>Team Name: Father Chill</li>
+          <li>Number of Members: 1</li>
         </ul>
       </div>
     </div>

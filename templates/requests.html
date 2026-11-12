@@ -50,7 +50,7 @@
           <tr>
             {% if view == 'authorized' %}<td>{{ h.username }}</td>{% endif %}
             <td>{{ when(h.resolved_at) }}</td><td>{{ h.content_type }}</td><td>{{ h.issue_count }}</td>
-            <td>{{ status_label(h.status) }}{% if h.remark %} <span class="remark-wrap"><button class="remark-link" type="button" aria-expanded="false">View remark</button><span class="remark-pop" role="dialog" aria-label="Remark" hidden>{{ h.remark }}</span></span>{% endif %}{% if h.download_url %} <a class="btn btn-small" href="{{ h.download_url }}">Download</a>{% endif %}</td>
+            <td>{{ status_label(h.status) }}{% if h.remark %} <span class="remark-wrap"><button class="remark-link" type="button" aria-expanded="false">View remark</button><span class="remark-pop" role="dialog" aria-label="Remark" hidden>{{ h.remark }}{% if h.resolved_by %}<span class="remark-by">{{ h.status }} by {{ h.resolved_by }}</span>{% endif %}</span></span>{% endif %}{% if h.download_url %} <a class="btn btn-small" href="{{ h.download_url }}">Download</a>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

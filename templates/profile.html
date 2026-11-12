@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import csrf, flashes, when with context %}
+{% from "_macros.html" import csrf, flashes with context %}
 {% block title %}Profile - ThirdEye{% endblock %}
 {% block body_class %}page-inner{% endblock %}
 {% block main %}
@@ -15,16 +15,15 @@
       <div><dt>Role</dt><dd>{{ me.role }}</dd></div>
       <div><dt>Organization</dt><dd>{{ me.org_name }}</dd></div>
       <div><dt>Organization ID</dt><dd>{{ me.org_id }}</dd></div>
-      <div><dt>Account created</dt><dd>{{ when(me.created_at) }}</dd></div>
     </dl>
 
     <h2>Your activity</h2>
-    <div class="metrics">
-      <div class="metric"><span class="metric-value">{{ counts.uploads }}</span><span class="metric-label">Content checked</span></div>
-      <div class="metric"><span class="metric-value">{{ counts.approved }}</span><span class="metric-label">Approved</span></div>
-      <div class="metric"><span class="metric-value">{{ counts.rejected }}</span><span class="metric-label">Rejected</span></div>
-      <div class="metric"><span class="metric-value">{{ counts.pending }}</span><span class="metric-label">Pending</span></div>
-    </div>
+    <ul class="stat-list">
+      <li><span>Content checked</span><strong>{{ counts.uploads }}</strong></li>
+      <li><span>Approved</span><strong>{{ counts.approved }}</strong></li>
+      <li><span>Rejected</span><strong>{{ counts.rejected }}</strong></li>
+      <li><span>Pending</span><strong>{{ counts.pending }}</strong></li>
+    </ul>
 
     <h2>Change password</h2>
     {% if can_change_password %}

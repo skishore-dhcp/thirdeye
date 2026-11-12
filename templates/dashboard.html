@@ -3,15 +3,29 @@
 {% block title %}Dashboard - ThirdEye{% endblock %}
 {% block body_class %}page-dashboard{% endblock %}
 {% block main %}
-<section class="banner">
-  <div class="banner-inner" data-tour-order="1" data-tour-title="Welcome to ThirdEye" data-tour-text="ThirdEye checks your text, PDFs and images against your organization's brand guidelines. This short tour shows you around.">
-    <h1>Keep your brand identity consistent and attractive with ThirdEye</h1>
-    <a class="btn btn-on-dark" href="#guide" data-scroll>Start Now</a>
+<section class="banner" id="banner" data-interval="7000" aria-roledescription="carousel" aria-label="Highlights">
+  <div class="slides">
+    <div class="slide">
+      <div class="banner-inner" data-tour-order="1" data-tour-title="Welcome to ThirdEye" data-tour-text="ThirdEye checks your text, PDFs and images against your organization's brand guidelines. This short tour shows you around.">
+        <h1>Keep your brand identity consistent and attractive with ThirdEye</h1>
+        <a class="btn btn-on-dark" href="#guide" data-scroll>Start Now</a>
+      </div>
+    </div>
+    <div class="slide">
+      <div class="banner-inner">
+        <h2 class="slide-title">View ThirdEye's documentation here</h2>
+        <a class="btn btn-on-dark" href="{{ docs_url }}">Documentation</a>
+      </div>
+    </div>
+  </div>
+  <div class="banner-dots">
+    <button type="button" class="banner-dot" aria-label="Show slide 1"></button>
+    <button type="button" class="banner-dot" aria-label="Show slide 2"></button>
   </div>
 </section>
 
 <section id="guide" class="guide">
-  <h2>A Guide to using ThirdEye</h2>
+  <h2>Choose your operation</h2>
   <div class="guide-row">
     <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}" data-tour-order="3" data-tour-title="Guidelines" data-tour-text="{{ 'Add the rules your content must follow: banned words, required phrases, tone, brand colors and logo.' if user.is_authorized else 'See the rules your organization has set for its content. Only reviewers can change them.' }}">
       <span class="guide-art" aria-hidden="true">01</span>
