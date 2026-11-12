@@ -242,3 +242,54 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 .member-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .member-actions form { margin: 0; }
 .table td .btn-small { white-space: nowrap; }
+
+body { display: flex; flex-direction: column; }
+main { flex: 1 0 auto; width: 100%; }
+.center { text-align: center; }
+.actions.center { justify-content: center; }
+.menu-link { display: block; margin-top: 8px; padding: 10px 18px; border-radius: 999px; font-weight: 700; text-decoration: none; color: var(--tcl01-ink); background: var(--tcl01-soft); box-shadow: var(--shadow-chip); }
+.menu-link:hover, .menu-link:focus-visible { box-shadow: var(--shadow-inset); }
+
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 26px 0; }
+.metric { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; border-radius: 28px; background: var(--tcl01-soft); box-shadow: var(--shadow-md); }
+.metric-value { font-family: var(--font-tcl01-display); font-size: 2.1rem; font-weight: 800; line-height: 1.1; color: var(--tcl01-link); }
+.metric-label { font-family: var(--font-tcl01-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--tcl01-mut); }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+.chart { margin: 0 0 22px; padding: 20px 22px; border-radius: 32px; background: var(--tcl01-well); box-shadow: var(--shadow-inset); overflow-x: auto; }
+.chart figcaption { margin-bottom: 10px; font-family: var(--font-tcl01-display); font-size: 1.15rem; font-weight: 700; }
+.chart svg { display: block; width: 100%; height: auto; }
+
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 0; }
+.facts div { padding: 14px 20px; border-radius: 24px; background: var(--tcl01-soft); box-shadow: var(--shadow-chip); }
+.facts dt { font-family: var(--font-tcl01-mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--tcl01-mut); }
+.facts dd { margin: 2px 0 0; font-weight: 700; word-break: break-word; }
+.password-form { max-width: 460px; }
+.password-form .btn { margin-top: 12px; }
+
+.decide-form { margin-top: 12px; }
+.decide-form .remark-input { min-height: 0; resize: vertical; border-radius: 22px; }
+.remark-wrap { display: inline-block; margin-left: 8px; }
+.remark-link { padding: 0; font: inherit; font-size: .9rem; font-weight: 700; color: var(--tcl01-link); background: none; border: 0; text-decoration: underline; cursor: pointer; }
+.remark-pop {
+  position: fixed; z-index: 60; width: min(86vw, 320px); padding: 14px 18px; border-radius: 22px; background: var(--tcl01-glow); color: var(--tcl01-ink);
+  box-shadow: var(--shadow-md); white-space: normal; word-break: break-word; font-size: .94rem; font-weight: 500; line-height: 1.5; text-align: left;
+}
+
+.site-footer { flex-shrink: 0; margin-top: 60px; padding: 46px 24px 22px; background: #000; color: #fff; }
+.footer-inner { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 36px; max-width: 1180px; margin: 0 auto; }
+.site-footer h2 { margin: 0 0 12px; font-family: var(--font-tcl01-display); font-size: 1.2rem; font-weight: 800; color: #fff; }
+.site-footer p, .site-footer li { color: #e6e6e6; font-size: .95rem; }
+.site-footer ul { list-style: none; margin: 0; padding: 0; }
+.site-footer li { margin: 6px 0; }
+.site-footer a { color: #fff; font-weight: 500; }
+.footer-note { max-width: 1180px; margin: 30px auto 0; padding-top: 16px; border-top: 1px solid #333; font-size: .85rem; text-align: center; }
+@media (max-width: 760px) { .footer-inner { grid-template-columns: 1fr; } }
+
+.tour-blocker { position: fixed; inset: 0; z-index: 100; }
+.tour-hole { position: fixed; z-index: 101; border-radius: 28px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(20, 26, 16, .72), 0 0 0 4px var(--tcl01-clay); transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; }
+.tour-card { position: fixed; z-index: 102; width: min(92vw, 360px); padding: 22px 24px; border-radius: 28px; background: var(--tcl01-glow); color: var(--tcl01-ink); box-shadow: var(--shadow-md); }
+.tour-card h3 { margin: 0 0 6px; font-family: var(--font-tcl01-display); font-size: 1.3rem; }
+.tour-card p { margin: 0 0 16px; font-size: .98rem; }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tour-count { font-family: var(--font-tcl01-mono); font-size: .85rem; color: var(--tcl01-mut); }
+.tour-buttons { display: flex; gap: 8px; }
