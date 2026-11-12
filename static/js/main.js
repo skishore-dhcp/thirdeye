@@ -88,19 +88,54 @@ document.addEventListener("DOMContentLoaded", () => {
     if (f) { preview.src = URL.createObjectURL(f); preview.hidden = false; }
   });
 
-  // Toolbar menu: close on outside click or Escape; opening Alerts marks them as seen
-  const menu = document.querySelector(".menu");
-  if (menu) {
-    document.addEventListener("click", (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") menu.open = false; });
+  // Sidebar menu: opens from the three-line button; closes on the backdrop, the close button or Escape
+  const sidebar = document.getElementById("sidebar"), toggle = document.getElementById("menu-toggle");
+  if (sidebar && toggle) {
+    const backdrop = document.getElementById("sidebar-backdrop");
+    const setOpen = (open) => {
+      sidebar.classList.toggle("open", open);
+      backdrop.classList.toggle("open", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) document.getElementById("menu-close").focus();
+    };
+    toggle.addEventListener("click", () => setOpen(!sidebar.classList.contains("open")));
+    backdrop.addEventListener("click", () => setOpen(false));
+    document.getElementById("menu-close").addEventListener("click", () => { setOpen(false); toggle.focus(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && sidebar.classList.contains("open")) setOpen(false); });
     const alertsMenu = document.getElementById("alerts-menu"), meta = document.querySelector('meta[name="csrf-token"]');
     if (alertsMenu && meta) alertsMenu.addEventListener("toggle", () => {
       if (!alertsMenu.open || alertsMenu.dataset.unseen === "0") return;
       fetch(alertsMenu.dataset.seenUrl, { method: "POST", headers: { "X-CSRF-Token": meta.content } }).then(() => {
         alertsMenu.dataset.unseen = "0";
-        document.querySelectorAll(".menu .badge").forEach((b) => b.remove());
+        document.querySelectorAll(".hamburger .badge, #alerts-menu .badge").forEach((b) => b.remove());
       });
     });
+  }
+
+  // Dashboard banner: slides change every few seconds; pauses on hover, on keyboard focus and during the tutorial
+  const banner = document.getElementById("banner");
+  if (banner) {
+    const track = banner.querySelector(".slides"), slides = Array.from(banner.querySelectorAll(".slide"));
+    const dots = Array.from(banner.querySelectorAll(".banner-dot"));
+    const wait = parseInt(banner.dataset.interval, 10) || 7000;
+    let current = 0, timer = 0, paused = false;
+    const go = (n) => {
+      current = (n + slides.length) % slides.length;
+      track.style.transform = `translateX(-${current * 100}%)`;
+      slides.forEach((s, i) => { s.inert = i !== current; });
+      dots.forEach((d, i) => d.classList.toggle("active", i === current));
+    };
+    const restart = () => {
+      clearInterval(timer);
+      timer = setInterval(() => { if (!paused && !document.querySelector(".tour-card")) go(current + 1); }, wait);
+    };
+    dots.forEach((d, i) => d.addEventListener("click", () => { go(i); restart(); }));
+    banner.addEventListener("mouseenter", () => { paused = true; });
+    banner.addEventListener("mouseleave", () => { paused = false; });
+    banner.addEventListener("focusin", () => { paused = true; });
+    banner.addEventListener("focusout", () => { paused = false; });
+    go(0);
+    restart();
   }
 });
 
