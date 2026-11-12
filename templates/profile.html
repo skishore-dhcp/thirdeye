@@ -10,12 +10,12 @@
     {{ flashes(messages) }}
 
     <h2>Account</h2>
-    <dl class="facts">
-      <div><dt>Username</dt><dd>{{ me.username }}</dd></div>
-      <div><dt>Role</dt><dd>{{ me.role }}</dd></div>
-      <div><dt>Organization</dt><dd>{{ me.org_name }}</dd></div>
-      <div><dt>Organization ID</dt><dd>{{ me.org_id }}</dd></div>
-    </dl>
+    <ul class="stat-list">
+      <li><span>Username</span><strong>{{ me.username }}</strong></li>
+      <li><span>Role</span><strong>{{ me.role }}</strong></li>
+      <li><span>Organization</span><strong>{{ me.org_name }}</strong></li>
+      <li><span>Organization ID</span><strong>{{ me.org_id }}</strong></li>
+    </ul>
 
     <h2>Your activity</h2>
     <ul class="stat-list">

@@ -26,7 +26,7 @@
           <textarea id="remark-{{ p.id }}" class="input remark-input" name="remark" rows="2" maxlength="300"></textarea>
           <div class="actions">
             <button class="btn" type="submit" formaction="{{ url_for('approve_request', sub_id=p.id) }}" data-remark-required="0">Approve</button>
-            <button class="btn" type="submit" formaction="{{ url_for('reject_request', sub_id=p.id) }}" data-remark-required="1">Reject</button>
+            <button class="btn btn-danger" type="submit" formaction="{{ url_for('reject_request', sub_id=p.id) }}" data-remark-required="1">Reject</button>
           </div>
         </form>
         {% endif %}
@@ -36,8 +36,11 @@
       <p class="muted">{{ 'No pending requests' if view == 'authorized' else "You have no pending requests" }}</p>
     {% endif %}
 
-    <h2>History</h2>
-    <p class="muted small">Need more than the recent history? <a href="{{ url_for('history_download') }}">Download the entire history (PDF)</a>{% if view != 'authorized' %}, which lists only your own entries{% endif %}.</p>
+    <div class="head-row">
+      <h2>History</h2>
+      <a class="btn btn-small" href="{{ url_for('history_download') }}">Download entire history (PDF)</a>
+    </div>
+    {% if view != 'authorized' %}<p class="muted small">The download lists only your own entries.</p>{% endif %}
     {% if history %}
     <div class="table-wrap">
       <table class="table">

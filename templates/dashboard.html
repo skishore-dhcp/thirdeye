@@ -18,6 +18,8 @@
       </div>
     </div>
   </div>
+  <button type="button" class="banner-arrow banner-prev" data-step="-1" aria-label="Previous slide">&lsaquo;</button>
+  <button type="button" class="banner-arrow banner-next" data-step="1" aria-label="Next slide">&rsaquo;</button>
   <div class="banner-dots">
     <button type="button" class="banner-dot" aria-label="Show slide 1"></button>
     <button type="button" class="banner-dot" aria-label="Show slide 2"></button>
@@ -26,7 +28,7 @@
 
 <section id="guide" class="guide">
   <h2>Choose your operation</h2>
-  <div class="guide-row">
+  <div class="guide-row{{ '' if user.is_admin else ' guide-pairs' }}">
     <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}" data-tour-order="3" data-tour-title="Guidelines" data-tour-text="{{ 'Add the rules your content must follow: banned words, required phrases, tone, brand colors and logo.' if user.is_authorized else 'See the rules your organization has set for its content. Only reviewers can change them.' }}">
       <span class="guide-art" aria-hidden="true">01</span>
       <span class="guide-title">Add Guidelines</span>

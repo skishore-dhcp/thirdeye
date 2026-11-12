@@ -19,12 +19,10 @@
     </a>
     {% if user %}
     <div class="userbox">
-      <span class="muted small" title="Organization">{{ user.org_name }} &middot; ID {{ user.org_id }}</span>
-      <span class="bar-sep" aria-hidden="true"></span>
       <span class="username">{{ user.username }}</span>
       <span class="role role-{{ user.role|lower }}">{{ user.role }}</span>
-      <a class="btn btn-small btn-on-dark logout-btn" href="{{ url_for('logout') }}"><svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1 0 10.8 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>Log Out</a>
-      <button type="button" class="hamburger" id="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar" data-tour-order="2" data-tour-title="Menu" data-tour-text="Open the menu for your alerts, your profile, the organization report and to replay this tutorial."><span></span><span></span><span></span>{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</button>
+      <a class="btn btn-small btn-on-dark logout-btn" href="{{ url_for('logout') }}" aria-label="Log out"><svg class="power-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M6.6 6.8a8 8 0 1 0 10.8 0" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg><span class="logout-text">Log Out</span></a>
+      <button type="button" class="hamburger" id="menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar" data-tour-order="2" data-tour-title="Menu" data-tour-text="Open the menu for your organization details, alerts, profile, the organization report, the documentation and to replay this tutorial."><span></span><span></span><span></span>{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</button>
     </div>
     {% endif %}
   </header>
@@ -35,6 +33,14 @@
       <span>Menu</span>
       <button type="button" class="sidebar-close" id="menu-close" aria-label="Close menu">&times;</button>
     </div>
+    <div class="sidebar-org">
+      <span class="sidebar-label">Organization</span>
+      <strong>{{ user.org_name }}</strong>
+      <span>Organization ID {{ user.org_id }}</span>
+      <span class="sidebar-label">Signed in as</span>
+      <strong>{{ user.username }}</strong>
+      <span>{{ user.role }}</span>
+    </div>
     <details class="menu-item" id="alerts-menu" data-unseen="{{ unseen_alerts }}" data-seen-url="{{ url_for('alerts_seen') }}">
       <summary>Alerts{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
       <ul class="alert-list">
@@ -44,6 +50,7 @@
     </details>
     <a class="menu-link" href="{{ url_for('profile') }}">Profile</a>
     <a class="menu-link" href="{{ url_for('reports_page') }}">Organization report</a>
+    <a class="menu-link" href="{{ docs_url }}">Documentation</a>
     <a class="menu-link" href="{{ url_for('dashboard', tour=1) }}">Tutorial</a>
   </aside>
   {% endif %}
