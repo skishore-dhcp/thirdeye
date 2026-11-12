@@ -87,4 +87,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const f = logo.files[0];
     if (f) { preview.src = URL.createObjectURL(f); preview.hidden = false; }
   });
+
+  // Toolbar menu: close on outside click or Escape; opening Alerts marks them as seen
+  const menu = document.querySelector(".menu");
+  if (menu) {
+    document.addEventListener("click", (e) => { if (menu.open && !menu.contains(e.target)) menu.open = false; });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") menu.open = false; });
+    const alertsMenu = document.getElementById("alerts-menu"), meta = document.querySelector('meta[name="csrf-token"]');
+    if (alertsMenu && meta) alertsMenu.addEventListener("toggle", () => {
+      if (!alertsMenu.open || alertsMenu.dataset.unseen === "0") return;
+      fetch(alertsMenu.dataset.seenUrl, { method: "POST", headers: { "X-CSRF-Token": meta.content } }).then(() => {
+        alertsMenu.dataset.unseen = "0";
+        document.querySelectorAll(".menu .badge").forEach((b) => b.remove());
+      });
+    });
+  }
 });
