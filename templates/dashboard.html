@@ -4,7 +4,7 @@
 {% block body_class %}page-dashboard{% endblock %}
 {% block main %}
 <section class="banner">
-  <div class="banner-inner">
+  <div class="banner-inner" data-tour-order="1" data-tour-title="Welcome to ThirdEye" data-tour-text="ThirdEye checks your text, PDFs and images against your organization's brand guidelines. This short tour shows you around.">
     <h1>Keep your brand identity consistent and attractive with ThirdEye</h1>
     <a class="btn btn-on-dark" href="#guide" data-scroll>Start Now</a>
   </div>
@@ -13,27 +13,33 @@
 <section id="guide" class="guide">
   <h2>A Guide to using ThirdEye</h2>
   <div class="guide-row">
-    <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}">
+    <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}" data-tour-order="3" data-tour-title="Guidelines" data-tour-text="{{ 'Add the rules your content must follow: banned words, required phrases, tone, brand colors and logo.' if user.is_authorized else 'See the rules your organization has set for its content. Only reviewers can change them.' }}">
       <span class="guide-art" aria-hidden="true">01</span>
       <span class="guide-title">Add Guidelines</span>
       <span class="guide-text">Define the rules your content should follow: tone, phrasing, color theme, and more.</span>
       <span class="guide-cta">Open</span>
     </a>
-    <a class="guide-item" data-num="2" href="{{ url_for('check') }}">
+    <a class="guide-item" data-num="2" href="{{ url_for('check') }}" data-tour-order="4" data-tour-title="Check Content" data-tour-text="Paste text or upload a PDF or an image. ThirdEye lists every problem it finds and fixes what it can.">
       <span class="guide-art" aria-hidden="true">02</span>
       <span class="guide-title">Check Content</span>
       <span class="guide-text">Upload the content to be checked, as plain text, a PDF or an image.</span>
       <span class="guide-cta">Open</span>
     </a>
-    <a class="guide-item" data-num="3" href="{{ url_for('requests_page') }}">
+    <a class="guide-item" data-num="3" href="{{ url_for('requests_page') }}" data-tour-order="5" data-tour-title="Approval Requests" data-tour-text="{{ 'Approve or reject pending requests, add a remark, and browse the request history.' if user.is_authorized else 'Follow your requests while a reviewer decides, read their remarks and download approved results.' }}">
       <span class="guide-art" aria-hidden="true">03</span>
       <span class="guide-title">Approval Requests</span>
       <span class="guide-text">Review pending approval requests and see the request history.</span>
       <span class="guide-cta">Open</span>
     </a>
-    {% if user.is_admin %}
-    <a class="guide-item" data-num="4" href="{{ url_for('members_page') }}">
+    <a class="guide-item" data-num="4" href="{{ url_for('reports_page') }}" data-tour-order="6" data-tour-title="Organization Report" data-tour-text="See how your organization is doing: checks, approvals, rejections, common issues and activity. You can download it as a PDF.">
       <span class="guide-art" aria-hidden="true">04</span>
+      <span class="guide-title">Organization Report</span>
+      <span class="guide-text">Totals, charts and trends for your whole organization, ready to download.</span>
+      <span class="guide-cta">Open</span>
+    </a>
+    {% if user.is_admin %}
+    <a class="guide-item" data-num="5" href="{{ url_for('members_page') }}" data-tour-order="7" data-tour-title="Member Management" data-tour-text="Add or remove members, change their roles and send a message to everyone.">
+      <span class="guide-art" aria-hidden="true">05</span>
       <span class="guide-title">Member Management</span>
       <span class="guide-text">Add or remove members, change their roles, and send a message to everyone.</span>
       <span class="guide-cta">Open</span>
@@ -43,7 +49,7 @@
 </section>
 
 <section class="insights-wrap">
-  <div class="card wide-card">
+  <div class="card wide-card" data-tour-order="8" data-tour-title="Insights" data-tour-text="Issues that keep coming back are collected here with tips to avoid them.">
     <h2>Insights on Repeated Issues</h2>
     <p class="muted">Issues that keep appearing in your content, with tips to avoid them.</p>
     {{ flashes(messages) }}
@@ -77,4 +83,5 @@
   </div>
 </section>
 {% endif %}
+<div id="tour-config" data-auto="{{ 1 if auto_tour else 0 }}" data-seen-url="{{ tour_seen_url }}" hidden></div>
 {% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flashes with context %}
+{% block title %}Organization Report - ThirdEye{% endblock %}
+{% block body_class %}page-inner{% endblock %}
+{% block main %}
+<div class="inner">
+  <a class="btn btn-small btn-on-dark back" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+  <section class="card wide-card">
+    <h1>Organization Report</h1>
+    {{ flashes(messages) }}
+    <p class="muted center">Everything {{ org.name }} (ID {{ org.id }}) has done so far. This page is read-only.</p>
+    <div class="actions center"><a class="btn" href="{{ download_url }}">Download PDF</a></div>
+
+    <div class="metrics">
+      {% for m in metrics %}
+      <div class="metric"><span class="metric-value">{{ m.value }}</span><span class="metric-label">{{ m.label }}</span></div>
+      {% endfor %}
+    </div>
+
+    <div class="chart-grid">
+      <figure class="chart"><figcaption>Approvals versus rejections</figcaption>{{ charts.pie|safe }}</figure>
+      <figure class="chart"><figcaption>Most used content types</figcaption>{{ charts.usage|safe }}</figure>
+    </div>
+    <figure class="chart"><figcaption>Most common issues</figcaption>{{ charts.issues|safe }}</figure>
+    <figure class="chart"><figcaption>Most revised content types <span class="muted small">(corrections applied in approved requests)</span></figcaption>{{ charts.revised|safe }}</figure>
+    <figure class="chart"><figcaption>Checks per day, last {{ summary.days }} days</figcaption>{{ charts.activity|safe }}</figure>
+  </section>
+</div>
+{% endblock %}

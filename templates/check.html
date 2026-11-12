@@ -15,16 +15,15 @@
     {% if approved %}
     <div class="results">
       <div class="status-ok">{{ approved.message }}</div>
-      {# changed #}
-      {% if approved.manual_edit %}<div class="note error" role="alert">Manual editing is still needed before you use this text. {% if '[removed]' in approved.corrected_text %}Replace every <strong>[removed]</strong> with your own wording, and {% endif %}Fix the items marked &ldquo;Manual editing needed&rdquo; in the report.</div>{% endif %}
+            {% if approved.manual_edit %}<div class="note error" role="alert">Manual editing is still needed before you use this text. {% if '[removed]' in approved.corrected_text %}Replace every <strong>[removed]</strong> with your own wording, and {% endif %}Fix the items marked &ldquo;Manual editing needed&rdquo; in the PDF report.</div>{% endif %}
       <label class="field-label" for="corrected">Corrected text</label>
       <textarea id="corrected" class="input textarea" rows="8" readonly>{{ approved.corrected_text }}</textarea>
       <div class="actions">
         <button class="btn" type="button" data-copy="#corrected">Copy</button>
         <a class="btn" href="{{ approved.download_url }}">Download</a>
       </div>
-      {% if approved.input_type == 'pdf' %}<p class="muted small">The download is a zip with a corrected copy of your PDF, the corrected text, and a short report. If required words are missing, the last page of the PDF lists them: add them where suitable, then delete that page. Your original file is untouched.</p>{% endif %}
-      {% if approved.input_type == 'image' %}<p class="muted small">The download is a zip with the corrected text and a short report. Your original image is untouched.</p>{% endif %}
+      {% if approved.input_type == 'pdf' %}<p class="muted small">The download is a zip with a corrected copy of your PDF, the corrected text, and a short PDF report. If required words are missing, the last page of the PDF lists them: add them where suitable, then delete that page. Your original file is untouched.</p>{% endif %}
+      {% if approved.input_type == 'image' %}<p class="muted small">The download is a zip with the corrected text and a short PDF report. Your original image is untouched.</p>{% endif %}
     </div>
     {% endif %}
 
@@ -65,8 +64,7 @@
         <div class="note error" role="alert">Not fully checked. No problems were found by the checks that ran, but some checks could not be completed or may be unreliable. See the notes below and review manually.</div>
       {% else %}
         <h2>Issues found ({{ result.issues|length }})</h2>
-        {# changed #}
-        {% if result.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed</strong> for: {{ result.issues|selectattr('manual')|map(attribute='label')|join('; ') }}. These cannot be fixed automatically. The items tagged &ldquo;Manual editing needed&rdquo; below say what to do.</div>{% endif %}
+                {% if result.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed</strong> for: {{ result.issues|selectattr('manual')|map(attribute='label')|join('; ') }}. These cannot be fixed automatically. The items tagged &ldquo;Manual editing needed&rdquo; below say what to do.</div>{% endif %}
         {{ issue_list(result.issues) }}
         {% if not user.is_authorized %}<div class="note">Your request will be sent to an Authorized user for approval.</div>{% endif %}
         <div class="actions">

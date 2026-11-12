@@ -17,14 +17,18 @@
           <span><strong>{{ p.username }}</strong> &middot; {{ when(p.created_at) }} &middot; {{ p.content_type }}</span>
           {{ status_label(p.status) }}
         </div>
-        {# changed #}
         {% if p.manual_edit %}<div class="note error" role="alert"><strong>Manual editing needed</strong> for: {{ p.issues|selectattr('manual')|map(attribute='label')|join('; ') }}. These cannot be fixed automatically and must be edited by hand.</div>{% endif %}
         {{ issue_list(p.issues) }}
         {% if p.can_decide %}
-        <div class="actions">
-          <form method="post" action="{{ url_for('approve_request', sub_id=p.id) }}">{{ csrf() }}<button class="btn" type="submit">Approve</button></form>
-          <form method="post" action="{{ url_for('reject_request', sub_id=p.id) }}">{{ csrf() }}<button class="btn" type="submit">Reject</button></form>
-        </div>
+        <form class="decide-form" method="post">
+          {{ csrf() }}
+          <label class="field-label" for="remark-{{ p.id }}">Remark <span class="muted small">(required to reject, optional to approve, up to 300 characters, cannot be edited later)</span></label>
+          <textarea id="remark-{{ p.id }}" class="input remark-input" name="remark" rows="2" maxlength="300"></textarea>
+          <div class="actions">
+            <button class="btn" type="submit" formaction="{{ url_for('approve_request', sub_id=p.id) }}" data-remark-required="0">Approve</button>
+            <button class="btn" type="submit" formaction="{{ url_for('reject_request', sub_id=p.id) }}" data-remark-required="1">Reject</button>
+          </div>
+        </form>
         {% endif %}
       </article>
       {% endfor %}
@@ -33,6 +37,7 @@
     {% endif %}
 
     <h2>History</h2>
+    <p class="muted small">Need more than the recent history? <a href="{{ url_for('history_download') }}">Download the entire history (PDF)</a>{% if view != 'authorized' %}, which lists only your own entries{% endif %}.</p>
     {% if history %}
     <div class="table-wrap">
       <table class="table">
@@ -45,13 +50,13 @@
           <tr>
             {% if view == 'authorized' %}<td>{{ h.username }}</td>{% endif %}
             <td>{{ when(h.resolved_at) }}</td><td>{{ h.content_type }}</td><td>{{ h.issue_count }}</td>
-            <td>{{ status_label(h.status) }}{% if h.download_url %} <a class="btn btn-small" href="{{ h.download_url }}">Download</a>{% endif %}</td>
+            <td>{{ status_label(h.status) }}{% if h.remark %} <span class="remark-wrap"><button class="remark-link" type="button" aria-expanded="false">View remark</button><span class="remark-pop" role="dialog" aria-label="Remark" hidden>{{ h.remark }}</span></span>{% endif %}{% if h.download_url %} <a class="btn btn-small" href="{{ h.download_url }}">Download</a>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-    <p class="muted small">The last 15 approved or rejected requests are kept.</p>
+    <p class="muted small">The last 15 approved or rejected requests are shown here and keep their files.</p>
     {% else %}
     <p class="muted">{{ 'No history yet' if view == 'authorized' else "You haven't submitted any requests yet" }}</p>
     {% endif %}

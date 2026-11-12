@@ -23,7 +23,7 @@
       <span class="username">{{ user.username }}</span>
       <span class="role role-{{ user.role|lower }}">{{ user.role }}</span>
       <details class="menu">
-        <summary class="btn btn-small btn-on-dark">Menu{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
+        <summary class="btn btn-small btn-on-dark" data-tour-order="2" data-tour-title="Menu" data-tour-text="Open the menu for your alerts, your profile, the organization report and to replay this tutorial.">Menu{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
         <div class="menu-panel">
           <details class="menu-item" id="alerts-menu" data-unseen="{{ unseen_alerts }}" data-seen-url="{{ url_for('alerts_seen') }}">
             <summary>Alerts{% if unseen_alerts %}<span class="badge">{{ unseen_alerts }}</span>{% endif %}</summary>
@@ -32,6 +32,9 @@
               {% else %}<li>No alerts yet.</li>{% endfor %}
             </ul>
           </details>
+          <a class="menu-link" href="{{ url_for('profile') }}">Profile</a>
+          <a class="menu-link" href="{{ url_for('reports_page') }}">Organization report</a>
+          <a class="menu-link" href="{{ url_for('dashboard', tour=1) }}">Tutorial</a>
         </div>
       </details>
       <a class="btn btn-small btn-on-dark" href="{{ url_for('logout') }}">Log Out</a>
@@ -39,6 +42,40 @@
     {% endif %}
   </header>
   <main>{% block main %}{% endblock %}</main>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-col footer-about">
+        <h2>About us</h2>
+        <p>ThirdEye helps teams keep their words, tone and visuals consistent with their brand. This is placeholder text: replace it with a short description of who we are and what we believe in.</p>
+        <p>Founded to make brand reviews quicker and fairer, we turn a team's guidelines into checks anyone can run before content goes out.</p>
+      </div>
+      <div class="footer-col">
+        <h2>Quick links</h2>
+        <ul>
+          {% if user %}
+          <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+          <li><a href="{{ url_for('guidelines') }}">Guidelines</a></li>
+          <li><a href="{{ url_for('check') }}">Check Content</a></li>
+          <li><a href="{{ url_for('requests_page') }}">Approval Requests</a></li>
+          <li><a href="{{ url_for('reports_page') }}">Organization report</a></li>
+          <li><a href="{{ url_for('profile') }}">Profile</a></li>
+          {% else %}
+          <li><a href="{{ url_for('login') }}">Log in</a></li>
+          <li><a href="{{ url_for('org_new') }}">Create an organization</a></li>
+          {% endif %}
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h2>Contact</h2>
+        <ul>
+          <li>hello@example.com</li>
+          <li>+00 000 000 0000</li>
+          <li>123 Placeholder Street, Your City</li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-note">&copy; ThirdEye. All rights reserved.</p>
+  </footer>
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 </body>
 </html>
