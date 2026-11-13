@@ -538,6 +538,37 @@ def register(app):
         db.session.commit()
         return done(f"Message sent to {len(recipients)} member(s).", "members_page")
 
+    @app.route("/organization/delete", methods=["GET", "POST"])
+    @admin_required
+    def org_delete():
+        org = g.user.org
+        if org.id == cfg["DEMO_ORG_ID"]:
+            return fail("The demo organization cannot be deleted.", 403, "dashboard")
+        if request.method == "GET":
+            return page("org_delete.html", org={"id": org.id, "name": org.name},
+                        member_count=User.query.filter_by(org_id=org.id).count())
+        key = (org.id, g.user.username.lower())
+        wait = login_lock_seconds(key)
+        if wait:
+            return fail(f"Too many wrong passwords. Please wait {math.ceil(wait / 60)} minute(s) and try again.", 429, "org_delete")
+        if not check_password_hash(g.user.password_hash, field("password")):
+            if len(failed_logins) > 1000:
+                failed_logins.clear()
+            failed_logins.setdefault(key, []).append(time.time())
+            return fail("The password is incorrect. Nothing was deleted.", 401, "org_delete")
+        failed_logins.pop(key, None)
+        org_id, name = org.id, org.name
+        for model in (Alert, Submission, ReportEvent, Guideline, BrandSettings, IssueCounter, Insight, User):
+            model.query.filter_by(org_id=org_id).delete(synchronize_session=False)
+        Setting.query.filter_by(key=f"sample_rules_seeded:{org_id}").delete(synchronize_session=False)
+        Organization.query.filter_by(id=org_id).delete(synchronize_session=False)
+        db.session.commit()
+        session.clear()
+        if wants_json():
+            return jsonify({"ok": True, "message": f"{name} was deleted.", "redirect": url_for("login")})
+        flash(f"The organization {name} and all of its data were deleted.", "success")
+        return redirect(url_for("login"))
+
     @app.route("/logout", methods=["GET", "POST"])
     def logout():
         session.clear()
