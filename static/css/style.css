@@ -117,7 +117,8 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 .banner h1, .banner .slide-title { margin: 0 0 30px; font-family: var(--font-tcl01-display); font-weight: 800; font-size: clamp(2.3rem, 5.4vw, 4.3rem); line-height: 1.04; letter-spacing: -.03em; color: #fff; text-shadow: 0 2px 18px #000; }
 .banner .btn { padding: 16px 42px; font-size: 1.12rem; background: var(--tcl01-clay); color: var(--tcl01-ink); box-shadow: 0 10px 24px -10px #000; }
 
-.guide { position: relative; isolation: isolate; overflow: hidden; padding: 84px 0 30px; }
+.guide { position: relative; isolation: isolate; overflow: hidden; padding: 84px 0 30px;
+  background: linear-gradient(118deg, transparent 8%, rgba(255, 255, 255, .5) 22%, transparent 36%, rgba(129, 133, 140, .28) 52%, transparent 66%, rgba(255, 255, 255, .42) 80%, transparent 94%); }
 .guide h2 { display: block; text-align: center; margin: 0 20px 46px; font-family: var(--font-tcl01-display); font-weight: 800; font-size: clamp(1.9rem, 3.4vw, 2.7rem); letter-spacing: -.02em; text-transform: none; color: var(--tcl01-ink); }
 .guide h2::after { content: ""; display: block; width: 110px; height: 12px; margin: 18px auto 0; border-radius: 999px; background: var(--tcl01-clay); box-shadow: var(--shadow-glyph); }
 .guide-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 36px; max-width: 1380px; margin: 0 auto; padding: 28px 36px 56px; }
@@ -125,20 +126,21 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
   position: relative; flex: 0 0 clamp(290px, 28vw, 410px); min-height: clamp(440px, 58vh, 580px); display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 14px; padding: 60px 34px; text-align: center; text-decoration: none; color: var(--tcl01-ink);
   border-radius: 34px; transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
-  background: rgba(251, 228, 232, .94); border: 1px solid rgba(122, 84, 62, .5);
-  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
-  box-shadow: 0 0 18px 2px rgba(122, 84, 62, .32), inset 0 1px 0 rgba(255, 255, 255, .7);
+  background-color: rgba(252, 208, 218, .55); border: 1px solid rgba(122, 84, 62, .42);
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .06) 44%, rgba(255, 255, 255, .24) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: 0 0 18px 2px rgba(122, 84, 62, .3), 0 22px 40px -26px rgba(32, 36, 42, .55), inset 0 0 0 1px rgba(255, 255, 255, .55), inset 0 1px 0 rgba(255, 255, 255, .9);
 }
-.guide-item:nth-child(even) { background: rgba(214, 176, 108, .94); }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .guide-item { background: #fbe4e8; } .guide-item:nth-child(even) { background: #d6b06c; } }
+.guide-item:nth-child(even) { background-color: rgba(220, 170, 84, .58); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .guide-item { background-color: #fbe4e8; } .guide-item:nth-child(even) { background-color: #d6b06c; } }
 .guide-item::before, .guide-item::after {
   content: attr(data-num) "\A\2726"; white-space: pre; text-align: center; position: absolute; font-family: var(--font-tcl01-mono);
   font-size: 1.2rem; font-weight: 600; line-height: 1.2; color: var(--tcl01-mut);
 }
 .guide-item::before { top: 30px; left: 34px; }
 .guide-item::after { bottom: 30px; right: 34px; transform: rotate(180deg); }
-.guide-item:hover, .guide-item:focus-visible { transform: translateY(-10px); background: rgba(251, 228, 232, 1); box-shadow: 0 0 26px 4px rgba(122, 84, 62, .42), inset 0 1px 0 rgba(255, 255, 255, .8); }
-.guide-item:nth-child(even):hover, .guide-item:nth-child(even):focus-visible { background: rgba(214, 176, 108, 1); }
+.guide-item:hover, .guide-item:focus-visible { transform: translateY(-10px); background-color: rgba(252, 208, 218, .72); box-shadow: 0 0 26px 4px rgba(122, 84, 62, .4), 0 30px 46px -26px rgba(32, 36, 42, .6), inset 0 0 0 1px rgba(255, 255, 255, .65), inset 0 1px 0 rgba(255, 255, 255, .95); }
+.guide-item:nth-child(even):hover, .guide-item:nth-child(even):focus-visible { background-color: rgba(220, 170, 84, .74); }
 .guide-art { font-family: var(--font-tcl01-display); font-size: clamp(5.5rem, 9vw, 8rem); font-weight: 800; line-height: 1; color: var(--tcl01-ink); opacity: .16; margin-bottom: 6px; }
 .guide-title { font-family: var(--font-tcl01-display); font-size: clamp(1.9rem, 2.6vw, 2.4rem); font-weight: 800; line-height: 1.12; letter-spacing: -.02em; }
 .guide-text { max-width: 270px; color: var(--tcl01-mut); font-size: 1.04rem; }
