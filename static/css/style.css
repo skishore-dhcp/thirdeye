@@ -2,14 +2,14 @@
 
 :root {
   --tcl01-bg: #efebe1;
-  --tcl01-glow: #fbf9f3;
+  --tcl01-glow: #eadfc9;
   --tcl01-clay: #b3cdc4;
   --tcl01-shade: #7f968f;
   --tcl01-light: #fffefae6;
   --tcl01-ink: #26393a;
   --tcl01-mut: #435657;
-  --tcl01-soft: #f4f1e8;
-  --tcl01-well: #f7f5ee;
+  --tcl01-soft: #f3ecdc;
+  --tcl01-well: #f6f1e4;
   --tcl01-link: #2c605e;
   --tcl01-ok: #8fc2a8;
   --tcl01-bad: #c9735f;
@@ -52,7 +52,7 @@ a { color: var(--tcl01-link); font-weight: 700; }
 
 .titlebar {
   position: sticky; top: 12px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  margin: 14px 18px 0; padding: 12px 26px; border-radius: 999px; background: var(--tcl01-light); backdrop-filter: blur(10px);
+  margin: 14px 18px 0; padding: 12px 26px; border-radius: 999px; background: rgba(234, 223, 201, .94); backdrop-filter: blur(10px);
   box-shadow: var(--shadow-md);
 }
 .brand { display: flex; align-items: center; gap: 12px; color: var(--tcl01-ink); text-decoration: none; font-family: var(--font-tcl01-display); font-weight: 800; font-size: 1.55rem; letter-spacing: -.01em; }
@@ -339,3 +339,4 @@ main { flex: 1 0 auto; width: 100%; }
 .guide-blobs span:nth-child(4) { bottom: 10%; right: 18%; width: 320px; height: 320px; background: var(--tcl01-clay); }
 .guide-blobs span:nth-child(5) { top: 42%; left: 44%; width: 260px; height: 260px; background: var(--tcl01-shade); opacity: .28; }
 @media (max-width: 760px) { .guide-blobs span { width: 260px !important; height: 260px !important; filter: blur(38px); } }
+
