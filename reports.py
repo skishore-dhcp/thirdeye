@@ -8,15 +8,15 @@ try:
 except ImportError:
     import fitz
 
-INK = "#25321f"
-MUTED = "#566249"
-SAGE = "#718a66"
-CLAY = "#b4c8a4"
-SOFT = "#f4ede0"
-GLOW = "#faf5e8"
-BAD = "#d9856f"
-LINK = "#2f5430"
-GOOD = "#8fbf86"
+INK = "#20242a"
+MUTED = "#4a4f57"
+SAGE = "#e2a640"
+CLAY = "#b4b9c1"
+SOFT = "#e8eaed"
+GLOW = "#f3f4f6"
+BAD = "#c9735f"
+LINK = "#2b3038"
+GOOD = "#8fc2a8"
 WHITE = "#ffffff"
 FONT = "Helvetica, Arial, sans-serif"
 
@@ -24,7 +24,7 @@ KIND_NAMES = {
     "must_not_use": "Must not use", "must_include": "Must include", "tone": "Tone / Style",
     "logo": "Logo", "color": "Color",
 }
-STATUS_COLORS = {"Approved": LINK, "Rejected": "#8a2f22", "Clean": SAGE, "Pending": MUTED, "Expired": MUTED}
+STATUS_COLORS = {"Approved": "#2f6b4f", "Rejected": "#8a2f22", "Clean": LINK, "Pending": MUTED, "Expired": MUTED}
 
 
 def _rgb(hex_color):
@@ -169,8 +169,8 @@ class Report:
             self.flush()
         self.page = self.doc.new_page(-1, width=self.W, height=self.H)
         if first:
-            self.page.draw_rect(fitz.Rect(0, 0, self.W, 96), color=None, fill=_rgb(SAGE))
-            self.page.draw_rect(fitz.Rect(0, 90, self.W, 96), color=None, fill=_rgb(CLAY))
+            self.page.draw_rect(fitz.Rect(0, 0, self.W, 96), color=None, fill=_rgb(LINK))
+            self.page.draw_rect(fitz.Rect(0, 90, self.W, 96), color=None, fill=_rgb(SAGE))
             self.text(self.M, 46, "ThirdEye", bold=True, size=11, color=WHITE)
             self.text(self.M, 72, self.title, bold=True, size=22, color=WHITE)
             self.y = 118.0
