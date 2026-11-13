@@ -56,7 +56,7 @@ class Config:
     MAX_MESSAGE_CHARS = 300
     MAX_REMARK_CHARS = 300
     REPORT_DAYS = 30
-    DOCS_URL = "#"
+    DOCS_URL = "https://drive.google.com/file/d/1y1HlCx26Pt7IaWUW95MNSLkbWjHKDlbW/view?usp=sharing"
     HISTORY_PDF_MAX_ROWS = 10000
     MIN_ORG_NAME_CHARS = 2
     MAX_ORG_NAME_CHARS = 60
