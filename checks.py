@@ -461,15 +461,19 @@ def _rgb(c):
     return ((c >> 16 & 255) / 255, (c >> 8 & 255) / 255, (c & 255) / 255)
 
 
-def _rewrite_lines(page, pattern, repl, inserts):
-    n = 0
+def _rewrite_lines(page, rules, inserts):
+    hits = set()
     for block in page.get_text("dict")["blocks"]:
         for line in block.get("lines", []):
             spans = line["spans"]
             text = "".join(s["text"] for s in spans)
-            if not spans or not pattern.search(text):
+            matched = [n for n, (pattern, _) in enumerate(rules) if pattern.search(text)] if spans else []
+            if not matched:
                 continue
-            new = pattern.sub(lambda m: _match_case(m.group(0), repl), text)
+            new = text
+            for n in matched:
+                pattern, repl = rules[n]
+                new = pattern.sub(lambda m, repl=repl: _match_case(m.group(0), repl), new)
             rect, first = fitz.Rect(line["bbox"]), spans[0]
             size, room = first["size"], page.rect.x1 - 36 - rect.x0
             while size > 6 and fitz.get_text_length(new, fontname="helv", fontsize=size) > room:
@@ -478,8 +482,8 @@ def _rewrite_lines(page, pattern, repl, inserts):
                 continue
             page.add_redact_annot(rect, fill=(1, 1, 1))
             inserts.append((page, first["origin"], new, size, _rgb(first["color"])))
-            n += 1
-    return n
+            hits.update(matched)
+    return hits
 
 
 NOTE_HEADER = "NOTE: THE LIST OF WORDS MUST BE INCLUDED IN THE PDF WHERE SUITABLE."
@@ -588,10 +592,12 @@ def edit_pdf(data, issues, scanned=False):
         if substitutes:
             notes.append("Scanned PDFs have no editable text, so banned-word fixes are only in the corrected text file.")
     else:
-        for i in substitutes:
-            pattern = banned_pattern(i["rule"])
-            hits = sum(_rewrite_lines(page, pattern, i["replace_with"], inserts) for page in doc)
-            if hits:
+        rules = [(banned_pattern(i["rule"]), i["replace_with"]) for i in substitutes]
+        hits = set()
+        for page in doc:
+            hits |= _rewrite_lines(page, rules, inserts)
+        for n, i in enumerate(substitutes):
+            if n in hits:
                 changed = True
             else:
                 notes.append(f'Could not edit "{i["rule"]}" inside the PDF layout. See the corrected text file.')
