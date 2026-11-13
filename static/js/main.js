@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (banner) {
     const track = banner.querySelector(".slides"), slides = Array.from(banner.querySelectorAll(".slide"));
     const dots = Array.from(banner.querySelectorAll(".banner-dot"));
-    const wait = parseInt(banner.dataset.interval, 10) || 7000;
+    const wait = parseInt(banner.dataset.interval, 10) || 5000;
     let current = 0, timer = 0, paused = false;
     const go = (n) => {
       current = (n + slides.length) % slides.length;
@@ -220,7 +220,6 @@ document.addEventListener("DOMContentLoaded", () => {
     hole.style.left = r.left - pad + "px";
     hole.style.width = r.width + pad * 2 + "px";
     hole.style.height = r.height + pad * 2 + "px";
-    hole.style.borderRadius = getComputedStyle(el).borderRadius === "0px" ? "28px" : getComputedStyle(el).borderRadius;
     const cw = card.offsetWidth, ch = card.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
     const gap = pad + 14, beside = Math.max(12, Math.min(r.top, vh - ch - 12));
     let top, left = Math.max(12, Math.min(r.left, vw - cw - 12));
