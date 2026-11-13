@@ -6,7 +6,7 @@
 <div class="inner">
   <a class="btn btn-small btn-on-dark back" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
   <section class="card wide-card">
-    <h1>Organization Report</h1>
+    <h1>Cumulative Organization Report</h1>
     {{ flashes(messages) }}
     <p class="muted center">Everything {{ org.name }} (ID {{ org.id }}) has done so far. This page is read-only.</p>
     <div class="actions center"><a class="btn" href="{{ download_url }}">Download PDF</a></div>
