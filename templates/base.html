@@ -52,6 +52,9 @@
     <a class="menu-link" href="{{ url_for('reports_page') }}">Organization report</a>
     <a class="menu-link" href="{{ docs_url }}">Documentation</a>
     <a class="menu-link" href="{{ url_for('dashboard', tour=1) }}">Tutorial</a>
+    {% if user.is_admin and user.org_id != demo_org_id %}
+    <a class="menu-danger" href="{{ url_for('org_delete') }}">Delete organization</a>
+    {% endif %}
   </aside>
   {% endif %}
   <main>{% block main %}{% endblock %}</main>

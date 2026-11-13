@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, flashes with context %}
+{% block title %}Delete organization - ThirdEye{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block main %}
+<section class="card auth-card">
+  <h1>Delete organization</h1>
+  {{ flashes(messages) }}
+  <div class="note danger-note">
+    <strong>This cannot be undone.</strong> Deleting {{ org.name }} (ID {{ org.id }}) permanently removes all {{ member_count }} account(s), including yours, and every guideline, brand setting, request, file, alert, insight and report of this organization.
+  </div>
+  <form method="post" action="{{ url_for('org_delete') }}">
+    {{ csrf() }}
+    <label class="sr-only" for="password">Your password</label>
+    <input id="password" class="input" type="password" name="password" placeholder="Enter your password to confirm" autocomplete="current-password" required autofocus>
+    <div class="actions">
+      <button class="btn btn-light-red" type="submit">Delete organization</button>
+      <a class="btn" href="{{ url_for('dashboard') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
