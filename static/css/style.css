@@ -111,11 +111,11 @@ select.input { appearance: none; padding-right: 48px; background: var(--tcl01-we
 
 .banner {
   position: relative; overflow: hidden; min-height: 380px; height: var(--banner-h); display: flex; align-items: center; text-align: center; padding: 40px 0;
-  background: radial-gradient(700px 360px at 50% 110%, var(--tcl01-clay), transparent 70%);
+  background: #000 url("../img/banner.jpg") center / cover no-repeat;
 }
 .banner-inner { max-width: 940px; }
-.banner h1, .banner .slide-title { margin: 0 0 30px; font-family: var(--font-tcl01-display); font-weight: 800; font-size: clamp(2.3rem, 5.4vw, 4.3rem); line-height: 1.04; letter-spacing: -.03em; color: var(--tcl01-ink); }
-.banner .btn { padding: 16px 42px; font-size: 1.12rem; box-shadow: var(--shadow-md); }
+.banner h1, .banner .slide-title { margin: 0 0 30px; font-family: var(--font-tcl01-display); font-weight: 800; font-size: clamp(2.3rem, 5.4vw, 4.3rem); line-height: 1.04; letter-spacing: -.03em; color: #fff; text-shadow: 0 2px 18px #000; }
+.banner .btn { padding: 16px 42px; font-size: 1.12rem; background: var(--tcl01-clay); color: var(--tcl01-ink); box-shadow: 0 10px 24px -10px #000; }
 
 .guide { position: relative; isolation: isolate; overflow: hidden; padding: 84px 0 30px; }
 .guide h2 { display: block; text-align: center; margin: 0 20px 46px; font-family: var(--font-tcl01-display); font-weight: 800; font-size: clamp(1.9rem, 3.4vw, 2.7rem); letter-spacing: -.02em; text-transform: none; color: var(--tcl01-ink); }
