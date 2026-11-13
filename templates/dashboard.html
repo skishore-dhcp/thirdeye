@@ -27,6 +27,7 @@
 </section>
 
 <section id="guide" class="guide">
+  <div class="guide-blobs" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
   <h2>Choose your operation</h2>
   <div class="guide-row{{ '' if user.is_admin else ' guide-pairs' }}">
     <a class="guide-item" data-num="1" href="{{ url_for('guidelines') }}" data-tour-order="3" data-tour-title="Guidelines" data-tour-text="{{ 'Add the rules your content must follow: banned words, required phrases, tone, brand colors and logo.' if user.is_authorized else 'See the rules your organization has set for its content. Only reviewers can change them.' }}">
